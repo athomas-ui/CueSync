@@ -1,0 +1,285 @@
+// CueSync data model. See docs/prototype/cuesync.html for the product spec.
+//
+// Workspace isolation: every workspace-owned table carries a required
+// workspaceId. Join tables (GroupMembership, EventGroup, SetlistItem) point at
+// their parents with a composite key (workspaceId, id), so the database itself
+// refuses to link rows from two different workspaces.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum WorkspaceRole {
+  owner
+  leader
+  musician
+}
+
+enum Channel {
+  email
+  text
+}
+
+enum MessageStatus {
+  draft
+  awaiting_approval
+  copied
+  handed_off
+  sent // only after a provider confirms delivery (CLAUDE.md rule 5)
+  failed
+}
+
+// ---------- Accounts ----------
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  isDemo    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships     WorkspaceMembership[]
+  contacts        Contact[]
+  createdMessages Message[]
+  auditLogs       AuditLog[]
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  isDemo    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships      WorkspaceMembership[]
+  contacts         Contact[]
+  groups           Group[]
+  groupMemberships GroupMembership[]
+  songs            Song[]
+  events           Event[]
+  eventGroups      EventGroup[]
+  setlistItems     SetlistItem[]
+  messages         Message[]
+  auditLogs        AuditLog[]
+}
+
+model WorkspaceMembership {
+  id          String        @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole
+  createdAt   DateTime      @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Also serves as the workspaceId index (leading column).
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+// ---------- People and groups ----------
+
+model Contact {
+  id               String   @id @default(cuid())
+  workspaceId      String
+  // Optional link to a login, for musicians who sign in later.
+  userId           String?
+  name             String
+  email            String?
+  phone            String?
+  preferredChannel Channel  @default(email)
+  isDemo           Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  workspace        Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user             User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  groupMemberships GroupMembership[]
+
+  // Postgres treats NULLs as distinct, so many contacts may have no email,
+  // but no two contacts in one workspace can share the same email.
+  @@unique([workspaceId, email])
+  @@unique([workspaceId, id])
+  @@index([userId])
+}
+
+model Group {
+  id                 String   @id @default(cuid())
+  workspaceId        String
+  name               String
+  type               String
+  description        String?
+  messagePreferences String?
+  isDemo             Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  memberships GroupMembership[]
+  events      EventGroup[]
+  messages    Message[]
+
+  @@unique([workspaceId, id])
+}
+
+model GroupMembership {
+  id          String   @id @default(cuid())
+  workspaceId String
+  groupId     String
+  contactId   String
+  role        String? // free text, e.g. "Alto", "Keys"
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  group     Group     @relation(fields: [workspaceId, groupId], references: [workspaceId, id], onDelete: Cascade)
+  contact   Contact   @relation(fields: [workspaceId, contactId], references: [workspaceId, id], onDelete: Cascade)
+
+  // A contact appears once per group; the same contact can be in many groups.
+  @@unique([groupId, contactId])
+  @@index([workspaceId])
+  @@index([contactId])
+}
+
+// ---------- Music and events ----------
+
+model Song {
+  id          String   @id @default(cuid())
+  workspaceId String
+  title       String
+  artist      String?
+  version     String?
+  key         String?
+  tempo       Int? // BPM
+  tags        String[] @default([])
+  // Links only, never lyrics text (CLAUDE.md rule 8).
+  videoUrl    String?
+  lyricsUrl   String?
+  chartUrl    String?
+  rights      String?
+  notes       String?
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  setlistItems SetlistItem[]
+
+  @@unique([workspaceId, id])
+}
+
+model Event {
+  id           String    @id @default(cuid())
+  workspaceId  String
+  title        String
+  type         String
+  // Wall-clock date and "HH:MM" time as the leader entered them, no timezone math.
+  date         DateTime? @db.Date
+  time         String?
+  location     String?
+  prepareBy    DateTime? @db.Date
+  instructions String?
+  isDemo       Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  groups       EventGroup[]
+  setlistItems SetlistItem[]
+  messages     Message[]
+
+  @@unique([workspaceId, id])
+  @@index([workspaceId, date])
+}
+
+model EventGroup {
+  workspaceId String
+  eventId     String
+  groupId     String
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  event     Event     @relation(fields: [workspaceId, eventId], references: [workspaceId, id], onDelete: Cascade)
+  group     Group     @relation(fields: [workspaceId, groupId], references: [workspaceId, id], onDelete: Cascade)
+
+  @@id([eventId, groupId])
+  @@index([workspaceId])
+  @@index([groupId])
+}
+
+model SetlistItem {
+  id          String  @id @default(cuid())
+  workspaceId String
+  eventId     String
+  songId      String
+  position    Int
+  // Per-event overrides; the song's library key and tempo stay unchanged.
+  key         String?
+  tempo       Int?
+  notes       String?
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  event     Event     @relation(fields: [workspaceId, eventId], references: [workspaceId, id], onDelete: Cascade)
+  // Restrict: a song used in a setlist cannot be deleted out from under it.
+  song      Song      @relation(fields: [workspaceId, songId], references: [workspaceId, id], onDelete: Restrict)
+
+  @@unique([eventId, position])
+  @@index([workspaceId])
+  @@index([songId])
+}
+
+// ---------- Communication and history ----------
+
+model Message {
+  id                String        @id @default(cuid())
+  workspaceId       String
+  // Simple foreign keys so a message survives its event or group being
+  // deleted (SetNull). The server helper checks these belong to workspaceId.
+  eventId           String?
+  groupId           String?
+  createdById       String?
+  channel           Channel
+  subject           String?
+  body              String
+  status            MessageStatus @default(draft)
+  purpose           String?
+  tone              String?
+  detail            String?
+  // Set only from a provider's confirmation, never by the client.
+  providerMessageId String?
+  sentAt            DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  event     Event?    @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  group     Group?    @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  createdBy User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, status])
+  @@index([eventId])
+  @@index([groupId])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  workspaceId String
+  actorUserId String?
+  action      String // e.g. "group.member_added"
+  entityType  String?
+  entityId    String?
+  summary     String // human-readable line for the activity feed
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actor     User?     @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, createdAt])
+  @@index([actorUserId])
+}

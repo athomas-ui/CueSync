@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CueSync prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#F4F5F8;--surface:#FFFFFF;--sunk:#EEF0F4;--ink:#14213D;--muted:#596378;--line:#DFE3EA;
+  --accent:#4F46E5;--accent-ink:#FFFFFF;--accent-soft:#ECECFE;
+  --ok:#15803D;--ok-soft:#E6F4EA;--warn:#A45309;--warn-soft:#FCF1E2;--danger:#B91C1C;--danger-soft:#FCEBEB;
+  --font:"Instrument Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --display:"Bricolage Grotesque","Instrument Sans",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0E1322;--surface:#161C2F;--sunk:#111627;--ink:#E8EBF3;--muted:#9AA3B6;--line:#273049;
+  --accent:#8F8DFB;--accent-ink:#0E1322;--accent-soft:#232750;
+  --ok:#5CC98A;--ok-soft:#173326;--warn:#F0B062;--warn-soft:#3A2A14;--danger:#F08A8A;--danger-soft:#3A1A1D;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1322;--surface:#161C2F;--sunk:#111627;--ink:#E8EBF3;--muted:#9AA3B6;--line:#273049;
+  --accent:#8F8DFB;--accent-ink:#0E1322;--accent-soft:#232750;
+  --ok:#5CC98A;--ok-soft:#173326;--warn:#F0B062;--warn-soft:#3A2A14;--danger:#F08A8A;--danger-soft:#3A1A1D;color-scheme:dark}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 var(--font);-webkit-font-smoothing:antialiased}
+body.locked{overflow:hidden}
+a{color:var(--accent)}
+h1,h2,h3{font-family:var(--display);margin:0;line-height:1.15;letter-spacing:-.01em}
+h1{font-size:clamp(28px,6vw,40px);font-weight:700}
+h2{font-size:20px;font-weight:700}
+h3{font-size:17px;font-weight:600}
+p{margin:0}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:6px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* Shell */
+.app{display:flex;min-height:100vh}
+.side{display:none}
+main{flex:1;min-width:0;width:100%;max-width:1080px;margin:0 auto;padding:20px 16px calc(130px + env(safe-area-inset-bottom,0px))}
+.bottom{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding-bottom:env(safe-area-inset-bottom,0px)}
+.bottom a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:58px;font-size:12px;font-weight:500;color:var(--muted);text-decoration:none}
+.bottom a.on{color:var(--accent)}
+.fab{position:fixed;right:16px;bottom:calc(74px + env(safe-area-inset-bottom,0px));z-index:31;width:56px;height:56px;border-radius:18px;border:0;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;box-shadow:0 6px 18px rgba(40,40,120,.28);cursor:pointer}
+@media (min-width:900px){
+  .side{display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh;width:236px;flex:none;padding:20px 12px;background:var(--surface);border-right:1px solid var(--line)}
+  .side.collapsed{width:76px}
+  .side.collapsed .lbl{display:none}
+  .bottom,.fab{display:none}
+  main{padding:32px 40px 64px}
+}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 10px 18px;font-family:var(--display);font-weight:700;font-size:20px}
+.logo{width:34px;height:34px;border-radius:10px;background:var(--ink);color:var(--bg);display:grid;place-items:center;flex:none}
+.side nav a{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:10px;color:var(--muted);text-decoration:none;font-weight:500}
+.side nav a:hover{background:var(--sunk);color:var(--ink)}
+.side nav a.on{background:var(--accent-soft);color:var(--accent)}
+.side .collapse{margin-top:auto}
+
+/* Elements */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:600 15px/1 var(--font);text-decoration:none;cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--danger);border-color:var(--danger-soft);background:var(--danger-soft)}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.lg{min-height:52px;padding:0 20px;font-size:16px}
+.btn.icon{width:44px;padding:0}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px}
+.stack{display:grid;gap:16px}
+.row{display:flex;align-items:center;gap:12px}
+.wrap{flex-wrap:wrap}
+.between{justify-content:space-between}
+.grow{flex:1;min-width:0}
+.pagehead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+.sechead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}
+.sechead a{font-size:14px;font-weight:600;text-decoration:none}
+.grid2{display:grid;gap:16px}
+@media (min-width:760px){.grid2{grid-template-columns:1fr 1fr}}
+.hero-actions{display:grid;gap:10px;margin:0 0 20px}
+@media (min-width:560px){.hero-actions{grid-template-columns:auto auto;justify-content:start}}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:500 14px/1 var(--font);text-decoration:none;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.pill{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;font-size:12.5px;font-weight:600;background:var(--sunk);color:var(--muted);white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.accent{background:var(--accent-soft);color:var(--accent)}
+.pill.danger{background:var(--danger-soft);color:var(--danger)}
+.pill[hidden]{display:none}
+label.f{display:grid;gap:6px;font-size:14px;font-weight:600}
+input,select,textarea{width:100%;min-height:46px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:400 16px/1.4 var(--font)}
+textarea{min-height:96px;resize:vertical}
+input[type=checkbox]{width:22px;height:22px;min-height:0;accent-color:var(--accent)}
+.err{color:var(--danger);font-size:13.5px;font-weight:500}
+.fields{display:grid;gap:14px}
+@media (min-width:640px){.fields.two{grid-template-columns:1fr 1fr}}
+.search{position:relative}
+.search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.search input{padding-left:40px}
+.list{display:grid}
+.item{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line);color:var(--ink);text-decoration:none;min-height:56px}
+.item:first-child{border-top:0}
+a.item:hover .t{color:var(--accent)}
+.t{font-weight:600}
+.datebox{width:52px;flex:none;text-align:center;border:1px solid var(--line);border-radius:12px;padding:6px 0;background:var(--sunk)}
+.datebox b{display:block;font-family:var(--display);font-size:22px;line-height:1}
+.datebox span{font-size:12px;color:var(--muted)}
+.tabs{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);margin-bottom:16px;scrollbar-width:none}
+.tabs a{flex:none;display:flex;align-items:center;gap:6px;min-height:44px;padding:0 12px;color:var(--muted);text-decoration:none;font-weight:600;border-bottom:2px solid transparent}
+.tabs a.on{color:var(--accent);border-color:var(--accent)}
+.empty{padding:20px;border:1px dashed var(--line);border-radius:12px;text-align:center;display:grid;gap:10px;justify-items:center}
+.note{padding:12px 14px;border-radius:12px;background:var(--accent-soft);color:var(--ink);font-size:14px}
+.note.warn{background:var(--warn-soft)}
+
+/* Cue sheet: the signature element */
+.cues{list-style:none;margin:0;padding:0}
+.cue{display:grid;grid-template-columns:48px 1fr;gap:14px;padding:16px 0;border-top:1px solid var(--line)}
+.cue:first-child{border-top:0}
+.cue-n{font-family:var(--display);font-weight:700;font-size:32px;line-height:1;color:var(--accent);text-align:right;font-variant-numeric:tabular-nums;padding-top:2px}
+.cue-tools{display:flex;gap:4px;flex:none}
+.cue-fields{display:grid;gap:8px;grid-template-columns:1fr 1fr;margin-top:10px}
+.cue-fields .full{grid-column:1/-1}
+.mini{display:flex;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:14px}
+
+/* Stepper */
+.steps{display:flex;gap:6px;overflow-x:auto;margin-bottom:18px;scrollbar-width:none}
+.steps li{list-style:none;flex:none;display:flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:13.5px;font-weight:600;color:var(--muted)}
+.steps li b{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--sunk);font-size:13px}
+.steps li.on{border-color:var(--accent);color:var(--accent)}
+.steps li.on b{background:var(--accent);color:var(--accent-ink)}
+.steps li.done b{background:var(--ok-soft);color:var(--ok)}
+.steps{padding:0;margin-top:0}
+.pick{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);cursor:pointer;min-height:64px}
+.pick.on{border-color:var(--accent);background:var(--accent-soft)}
+.wizbar{display:flex;justify-content:space-between;gap:10px;margin-top:20px}
+.preview{white-space:pre-wrap;font:15px/1.6 var(--font);background:var(--sunk);border:1px solid var(--line);border-radius:12px;padding:16px;max-height:420px;overflow:auto}
+textarea.body{min-height:340px;font-size:15px;line-height:1.6}
+.spinner{width:22px;height:22px;border:3px solid var(--accent-soft);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Modal + toast */
+.scrim{position:fixed;inset:0;background:rgba(8,12,24,.5);z-index:50}
+.modal{position:fixed;z-index:51;left:0;right:0;bottom:0;max-height:88vh;overflow:auto;background:var(--surface);border-radius:20px 20px 0 0;padding:22px 18px calc(22px + env(safe-area-inset-bottom,0px));display:grid;gap:16px}
+@media (min-width:640px){.modal{left:50%;top:50%;bottom:auto;transform:translate(-50%,-50%);width:min(560px,92vw);border-radius:20px}}
+.actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+#toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(140px + env(safe-area-inset-bottom,0px));z-index:60;display:grid;gap:8px;width:min(420px,92vw)}
+@media (min-width:900px){#toasts{bottom:24px}}
+.toast{padding:12px 16px;border-radius:12px;background:var(--ink);color:var(--bg);font-weight:500;font-size:15px;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+.toast.bad{background:var(--danger);color:#fff}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side" id="side" aria-label="Main">
+    <div class="brand"><span class="logo" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 16V8M10 19V5M15 15V9M20 13v-2"/></svg></span><span class="lbl">CueSync</span></div>
+    <nav id="sidenav"></nav>
+    <button class="btn ghost collapse" data-act="collapse" aria-label="Collapse sidebar"></button>
+  </aside>
+  <main id="main" tabindex="-1"></main>
+</div>
+<nav class="bottom" id="bottomnav" aria-label="Main"></nav>
+<button class="fab" data-act="fab" aria-label="Create event or prepare message"></button>
+<div id="toasts" aria-live="polite"></div>
+<div id="modal-root"></div>
+
+<script>
+/* ---------- Utilities ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Math.random().toString(36).slice(2,10);
+const clone=o=>JSON.parse(JSON.stringify(o));
+function localISO(d){const z=new Date(d.getTime()-d.getTimezoneOffset()*60000);return z.toISOString().slice(0,10)}
+function addDays(n){const d=new Date();d.setDate(d.getDate()+n);return localISO(d)}
+function shift(ds,n){const d=new Date(ds+'T12:00');d.setDate(d.getDate()+n);return localISO(d)}
+function fmtDate(ds,t){if(!ds)return'No date set';const d=new Date(ds+'T'+(t||'12:00'));let s=d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});if(t)s+=', '+d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});return s}
+function ago(ts){const m=Math.round((Date.now()-ts)/60000);if(m<1)return'just now';if(m<60)return m+' min ago';const h=Math.round(m/60);if(h<24)return h+' hr ago';return Math.round(h/24)+' days ago'}
+const isUrl=u=>/^https:\/\/[^\s]+\.[^\s]+$/i.test(u);
+
+const I={
+home:'<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+cal:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+music:'<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+users:'<circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6M16 4a4 4 0 0 1 0 8M22 21c0-3-2-5-4-5.5"/>',
+more:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
+mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+plus:'<path d="M12 5v14M5 12h14"/>',
+search:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+up:'<path d="M6 15l6-6 6 6"/>',down:'<path d="M6 9l6 6 6-6"/>',
+trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+spark:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>',
+copy:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
+back:'<path d="M15 18l-6-6 6-6"/>',fwd:'<path d="M9 18l6-6-6-6"/>',
+send:'<path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/>',
+plug:'<path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0zM12 18v4"/>',
+gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
+link:'<path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/>',
+panel:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>',
+edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/>'
+};
+const ic=(n,s=20)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
+
+/* ---------- Data ---------- */
+const KEY='cuesync.proto.v1';
+const TYPES=['Church service','Rehearsal','Concert','Live gig','Choir performance','Orchestra rehearsal','Other'];
+const GTYPES=['Worship team','Choir','Live band','Orchestra','Vocal section','Guest musicians','Other'];
+const TONES=['Warm and encouraging','Professional','Brief and direct'];
+const DETAILS=['Brief','Standard','Full detail'];
+const PURPOSES=['Setlist distribution','Rehearsal announcement','Performance reminder','Last-minute change','Follow-up'];
+const STATUS={draft:['Draft',''],approval:['Awaiting approval','warn'],copied:['Copied, not sent',''],handed:['Handed to email app','accent'],sent:['Sent','ok'],failed:['Failed','danger']};
+
+function seed(){
+  const c=(name,email,phone,channel)=>({id:uid(),name,email,phone,channel});
+  const contacts=[c('Jordan Ellis','jordan@example.com','','email'),c('Maya Brooks','maya@example.com','555-0101','text'),c('Darnell Price','darnell@example.com','','email'),c('Grace Kim','grace@example.com','','email'),c('Andre Wallace','andre@example.com','555-0104','email'),c('Lena Ortiz','lena@example.com','','email')];
+  const [jo,ma,da,gr,an,le]=contacts.map(x=>x.id);
+  const g1={id:uid(),name:'Worship Team',type:'Worship team',desc:'Sunday band and lead vocals',prefs:'Include keys, tempos and transitions.',members:[{contactId:jo,role:'Keys'},{contactId:da,role:'Bass'},{contactId:an,role:'Drums'},{contactId:ma,role:'Lead vocal'}]};
+  const g2={id:uid(),name:'Sanctuary Choir',type:'Choir',desc:'SATB choir',prefs:'Point singers to part-learning recordings.',members:[{contactId:ma,role:'Soprano'},{contactId:gr,role:'Alto'},{contactId:le,role:'Tenor'}]};
+  const s=(title,artist,key,tempo,tags,rights)=>({id:uid(),title,artist,version:'',key,tempo,tags,links:{video:'',lyrics:'',chart:''},rights,notes:'',demo:true,created:Date.now()});
+  const songs=[s('Amazing Grace','John Newton (text)','G','72',['hymn'],'Text is public domain; check the arrangement you use'),s('Be Thou My Vision','Traditional Irish','Eb','84',['hymn'],'Text is public domain; check the translation and arrangement'),s('Lift Every Voice and Sing','J. W. Johnson and J. R. Johnson','Ab','66',['anthem'],'Original is public domain; check the edition'),s('Great Is Thy Faithfulness','T. Chisholm and W. Runyan','D','76',['hymn'],'Check the edition and arrangement rights')];
+  const d=new Date().getDay();
+  const sun=addDays(((7-d)%7)||7), thu=addDays(((4-d+7)%7)||7);
+  const it=(songId,notes='')=>({id:uid(),songId,key:'',tempo:'',notes});
+  const events=[
+    {id:uid(),title:'Sunday Morning Service',type:'Church service',date:sun,time:'10:00',location:'Main sanctuary',groupIds:[g1.id,g2.id],setlist:[it(songs[2].id,'Choir opens, band enters on verse 2'),it(songs[0].id),it(songs[1].id,'Soft ending into prayer')],deadline:shift(sun,-1),instructions:'Sound check at 8:45. Dress: all black.',created:Date.now()},
+    {id:uid(),title:'Choir Rehearsal',type:'Rehearsal',date:thu,time:'19:00',location:'Choir room',groupIds:[g2.id],setlist:[it(songs[3].id,'Altos, review the bridge')],deadline:'',instructions:'Bring a pencil.',created:Date.now()}
+  ];
+  return {v:1,settings:{workspace:'Demo workspace',leader:'',theme:'system',collapsed:false},contacts,groups:[g1,g2],songs,events,messages:[],log:[{t:Date.now(),msg:'Demo workspace created'}]};
+}
+function load(){try{const r=localStorage.getItem(KEY);return r?JSON.parse(r):null}catch(e){return null}}
+let S=load()||seed();
+let storageOk=true;
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));storageOk=true}catch(e){storageOk=false}}
+function log(msg){S.log.unshift({t:Date.now(),msg});S.log=S.log.slice(0,60)}
+const song=id=>S.songs.find(x=>x.id===id);
+const grp=id=>S.groups.find(x=>x.id===id);
+const ev=id=>S.events.find(x=>x.id===id);
+const contact=id=>S.contacts.find(x=>x.id===id);
+const byDate=(a,b)=>(a.date||'9')+(a.time||'')<(b.date||'9')+(b.time||'')?-1:1;
+save();
+
+/* ---------- AI (optional runtime capability) ---------- */
+let AI=null;
+if(window.claude&&typeof claude.use==='function'){claude.use('sample').then(s=>{AI=s;if(/integrations|compose/.test(location.hash))render()}).catch(()=>{})}
+
+/* ---------- UI helpers ---------- */
+function toast(msg,bad){const t=document.createElement('div');t.className='toast'+(bad?' bad':'');t.textContent=msg;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),3200)}
+function modal(html){$('#modal-root').innerHTML=`<div class="scrim" data-act="close-modal"></div><div class="modal" role="dialog" aria-modal="true">${html}</div>`;document.body.classList.add('locked');const f=$('#modal-root .modal input,#modal-root .modal select,#modal-root .modal textarea');(f||$('#modal-root .modal button'))?.focus()}
+function closeModal(){$('#modal-root').innerHTML='';document.body.classList.remove('locked')}
+function confirmModal(title,body,ok,fn,danger=true){modal(`<h2>${title}</h2><p class="muted">${body}</p><div class="actions"><button class="btn" data-act="close-modal">Cancel</button><button class="btn ${danger?'danger':'primary'}" id="m-ok">${ok}</button></div>`);$('#m-ok').onclick=()=>{closeModal();fn()}}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#modal-root').innerHTML)closeModal()});
+const empty=(text,cta,href,act)=>`<div class="empty"><p class="muted">${text}</p>${cta?(href?`<a class="btn" href="${href}">${ic('plus',18)}${cta}</a>`:`<button class="btn" data-act="${act}">${ic('plus',18)}${cta}</button>`):''}</div>`;
+const statusPill=s=>{const [l,c]=STATUS[s]||[s,''];return `<span class="pill ${c}">${l}</span>`};
+async function copyText(t){try{await navigator.clipboard.writeText(t);return true}catch(e){const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();let ok=false;try{ok=document.execCommand('copy')}catch(_){}ta.remove();return ok}}
+function applyTheme(){const t=S.settings.theme;if(t==='system')document.documentElement.removeAttribute('data-theme');else document.documentElement.dataset.theme=t}
+
+/* ---------- Navigation ---------- */
+const SIDE=[['home','Dashboard','home'],['events','Events & setlists','cal'],['music','Music library','music'],['groups','Groups','users'],['research','Music research','search'],['messages','Message center','mail'],['integrations','Integrations','plug'],['settings','Settings','gear']];
+const BOTTOM=[['home','Home','home'],['events','Events','cal'],['music','Music','music'],['groups','Groups','users'],['more','More','more']];
+const parent={event:'events',song:'music',group:'groups',compose:'messages'};
+const mobParent={research:'music',messages:'more',compose:'more',integrations:'more',settings:'more'};
+function parse(){const h=location.hash.replace(/^#\/?/,'')||'home';return h.split('/')}
+function navRender(page){
+  const p=parent[page]||page;const mp=mobParent[p]||p;
+  $('#sidenav').innerHTML=SIDE.map(([k,l,i])=>`<a href="#/${k}" class="${p===k?'on':''}" ${p===k?'aria-current="page"':''}>${ic(i)}<span class="lbl">${l}</span></a>`).join('');
+  $('#bottomnav').innerHTML=BOTTOM.map(([k,l,i])=>`<a href="#/${k}" class="${mp===k?'on':''}" ${mp===k?'aria-current="page"':''}>${ic(i,22)}<span>${l}</span></a>`).join('');
+  $('#side').classList.toggle('collapsed',!!S.settings.collapsed);
+  $('.collapse').innerHTML=ic('panel')+'<span class="lbl">Collapse</span>';
+  $('.fab').innerHTML=ic('plus',26);
+}
+let lastPage='';
+function render(){
+  applyTheme();
+  const [page,id,sub]=parse();
+  navRender(page);
+  const V={home:vHome,events:vEvents,event:vEvent,music:vMusic,song:vSong,research:vResearch,groups:vGroups,group:vGroup,messages:vMessages,compose:vCompose,more:vMore,integrations:vIntegrations,settings:vSettings}[page]||vHome;
+  $('#main').innerHTML=V(id,sub);
+  const key=page+'/'+(id||'');if(key!==lastPage){window.scrollTo(0,0);lastPage=key}
+  if(page==='event')renderSongPick();
+}
+window.addEventListener('hashchange',render);
+const go=h=>{if(location.hash===h)render();else location.hash=h};
+
+/* ---------- Dashboard ---------- */
+function evRow(e){const d=e.date?new Date(e.date+'T12:00'):null;const unsaved=EW&&EW.id===e.id&&EW.dirty;
+  return `<a class="item" href="#/event/${e.id}"><div class="datebox">${d?`<b>${d.getDate()}</b><span>${d.toLocaleDateString(undefined,{month:'short'})}</span>`:'<span>TBD</span>'}</div><div class="grow"><div class="t">${esc(e.title)}</div><div class="mini"><span>${esc(e.type)}</span><span>${fmtDate(e.date,e.time)}</span><span>${e.setlist.length} song${e.setlist.length===1?'':'s'}</span>${unsaved?'<span class="pill warn">Unsaved edits</span>':''}</div></div>${ic('fwd',18)}</a>`}
+function msgRow(m){const e=ev(m.eventId);const g=m.groupIds.map(grp).filter(Boolean).map(x=>x.name).join(', ');
+  return `<a class="item" href="#/compose/${m.id}"><div class="grow"><div class="t">${esc(m.subject||'Untitled message')}</div><div class="mini"><span>${esc(e?e.title:'Deleted event')}</span><span>${esc(g)}</span><span>${m.channel==='text'?'Text':'Email'}</span><span>${ago(m.updated)}</span></div></div>${statusPill(m.status)}</a>`}
+function vHome(){
+  const today=localISO(new Date());
+  const up=S.events.filter(e=>!e.date||e.date>=today).sort(byDate).slice(0,4);
+  const recent=[...S.events].sort((a,b)=>(b.updated||b.created)-(a.updated||a.created)).slice(0,3);
+  const drafts=S.messages.filter(m=>m.status==='draft'||m.status==='approval').slice(0,4);
+  const h=new Date().getHours();const greet=h<12?'Good morning':h<18?'Good afternoon':'Good evening';
+  const first=S.settings.leader?', '+esc(S.settings.leader.split(' ')[0]):'';
+  return `<header class="pagehead"><div><p class="muted">${esc(S.settings.workspace)}</p><h1>${greet}${first}</h1></div></header>
+  <div class="hero-actions"><a class="btn primary lg" href="#/event/new">${ic('plus')}Create event</a><button class="btn lg" data-act="compose-new">${ic('send')}Prepare music &amp; send</button></div>
+  <div class="grid2">
+    <section class="card"><div class="sechead"><h2>Upcoming</h2><a href="#/events">All events</a></div><div class="list">${up.length?up.map(evRow).join(''):empty('No upcoming events yet.','Create event','#/event/new')}</div></section>
+    <section class="card"><div class="sechead"><h2>Drafts to review</h2><a href="#/messages">Message center</a></div><div class="list">${drafts.length?drafts.map(msgRow).join(''):'<p class="muted">Prepared messages wait here for your review. Nothing goes out without your approval.</p>'}</div></section>
+    <section class="card"><div class="sechead"><h2>Recently edited setlists</h2></div><div class="list">${recent.map(evRow).join('')||'<p class="muted">None yet.</p>'}</div></section>
+    <section class="card"><div class="sechead"><h2>Groups</h2><a href="#/groups">Manage</a></div><div class="chips">${S.groups.map(g=>`<a class="chip" href="#/group/${g.id}">${esc(g.name)}<span class="muted">${g.members.length}</span></a>`).join('')||'<p class="muted">No groups yet.</p>'}</div>
+      <div class="sechead" style="margin-top:20px"><h2>Activity</h2></div><div class="list small">${S.log.slice(0,5).map(l=>`<div class="item" style="min-height:0"><span class="grow">${esc(l.msg)}</span><span class="muted">${ago(l.t)}</span></div>`).join('')}</div></section>
+  </div>
+  <p class="muted small" style="margin-top:20px">Prototype: data is saved in this browser only, and no messages are sent from here.${storageOk?'':' Saving is blocked in this browser, so changes last until you close the page.'}</p>`}
+
+/* ---------- Events ---------- */
+const EVF={q:'',type:''};
+function evListHTML(){const q=EVF.q.toLowerCase();const l=S.events.filter(e=>(!q||e.title.toLowerCase().includes(q)||(e.location||'').toLowerCase().includes(q))&&(!EVF.type||e.type===EVF.type)).sort(byDate);
+  return l.length?l.map(evRow).join(''):(S.events.length?'<p class="muted">No events match these filters.</p>':empty('Plan your first service, gig, or rehearsal.','Create event','#/event/new'))}
+function vEvents(){return `<header class="pagehead"><h1>Events &amp; setlists</h1><a class="btn primary" href="#/event/new">${ic('plus')}New event</a></header>
+  <div class="row wrap" style="margin-bottom:12px"><div class="search grow" style="min-width:200px">${ic('search',18)}<input id="evq" placeholder="Search events" value="${esc(EVF.q)}" aria-label="Search events"></div>
+  <select id="evtype" aria-label="Filter by type" style="width:auto"><option value="">All types</option>${TYPES.map(t=>`<option ${EVF.type===t?'selected':''}>${t}</option>`).join('')}</select></div>
+  <section class="card"><div class="list" id="evlist">${evListHTML()}</div></section>`}
+
+let EW=null;
+function blankEvent(){return{id:uid(),title:'',type:'Church service',date:'',time:'',location:'',groupIds:[],setlist:[],deadline:'',instructions:'',isNew:true,dirty:false}}
+function vEvent(id){
+  if(id==='new'){if(!EW||!EW.isNew)EW=blankEvent()}
+  else{const e=ev(id);if(!e)return notFound('That event no longer exists.','#/events');if(!EW||EW.id!==id){EW=clone(e);EW.dirty=false}}
+  const cues=EW.setlist.map((it,i)=>{const s=song(it.songId);if(!s)return'';return `<li class="cue"><div class="cue-n">${i+1}</div><div><div class="row between" style="align-items:flex-start"><div class="grow"><a class="t" href="#/song/${s.id}" style="color:var(--ink);text-decoration:none">${esc(s.title)}</a><div class="mini">${esc(s.artist)}${s.key?`<span>Library key ${esc(s.key)}</span>`:''}</div></div>
+    <div class="cue-tools"><button class="btn icon ghost" data-act="ew-up" data-id="${i}" aria-label="Move ${esc(s.title)} up" ${i===0?'disabled':''}>${ic('up')}</button><button class="btn icon ghost" data-act="ew-down" data-id="${i}" aria-label="Move ${esc(s.title)} down" ${i===EW.setlist.length-1?'disabled':''}>${ic('down')}</button><button class="btn icon ghost" data-act="ew-rm" data-id="${i}" aria-label="Remove ${esc(s.title)}">${ic('trash')}</button></div></div>
+    <div class="cue-fields"><input data-sl="${i}:key" value="${esc(it.key)}" placeholder="Key for this event" aria-label="Key"><input data-sl="${i}:tempo" value="${esc(it.tempo)}" placeholder="Tempo (BPM)" aria-label="Tempo" inputmode="numeric"><input class="full" data-sl="${i}:notes" value="${esc(it.notes)}" placeholder="Transition, instrumentation, or notes" aria-label="Notes"></div></div></li>`}).join('');
+  return `<a href="#/events" class="btn ghost" style="padding-left:4px;margin-bottom:6px">${ic('back')}Events</a>
+  <header class="pagehead"><div><h1>${EW.isNew?'New event':esc(EW.title||'Untitled event')}</h1></div><span id="dirty" class="pill warn" ${EW.dirty?'':'hidden'}>Unsaved changes</span></header>
+  <div class="stack">
+  <section class="card"><div class="fields two">
+    <label class="f" style="grid-column:1/-1">Event title<input data-ew="title" value="${esc(EW.title)}" placeholder="e.g. Sunday Morning Service" autocomplete="off"><span class="err" id="err-title"></span></label>
+    <label class="f">Event type<select data-ew="type">${TYPES.map(t=>`<option ${EW.type===t?'selected':''}>${t}</option>`).join('')}</select></label>
+    <label class="f">Location<input data-ew="location" value="${esc(EW.location)}" placeholder="Venue or room"></label>
+    <label class="f">Date<input type="date" data-ew="date" value="${esc(EW.date)}"><span class="err" id="err-date"></span></label>
+    <label class="f">Start time<input type="time" data-ew="time" value="${esc(EW.time)}"></label>
+  </div></section>
+  <section class="card"><div class="sechead"><h2>Participating groups</h2><a href="#/groups">Manage groups</a></div>
+    <div class="chips">${S.groups.map(g=>`<button class="chip" data-act="ew-group" data-id="${g.id}" aria-pressed="${EW.groupIds.includes(g.id)}">${esc(g.name)}<span class="muted">${g.members.length}</span></button>`).join('')||'<p class="muted">Create a group first.</p>'}</div></section>
+  <section class="card"><div class="sechead"><h2>Setlist</h2><span class="muted small">${EW.setlist.length} song${EW.setlist.length===1?'':'s'}</span></div>
+    ${EW.setlist.length?`<ol class="cues">${cues}</ol>`:'<p class="muted" style="margin-bottom:12px">No songs yet. Search your library below.</p>'}
+    <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px"><div class="search">${ic('search',18)}<input id="songq" placeholder="Add a song from your library" aria-label="Search library to add a song" autocomplete="off"></div><div class="list" id="songres"></div>
+    <p class="small muted" style="margin-top:8px">Not in your library? <a href="#/research">Research a new song</a></p></div></section>
+  <section class="card"><div class="fields two">
+    <label class="f">Rehearsal deadline<input type="date" data-ew="deadline" value="${esc(EW.deadline)}"></label>
+    <label class="f" style="grid-column:1/-1">Performance instructions<textarea data-ew="instructions" placeholder="Call time, dress, sound check">${esc(EW.instructions)}</textarea></label>
+  </div></section>
+  <div class="row wrap"><button class="btn primary lg" data-act="ew-save">Save event</button>${EW.isNew?'':`<button class="btn lg" data-act="ew-compose">${ic('send')}Prepare message</button><button class="btn lg" data-act="ew-revert" ${EW.dirty?'':'hidden'} id="revert">Discard changes</button><button class="btn danger lg" data-act="ew-delete">Delete</button>`}</div>
+  </div>`}
+function renderSongPick(){const box=$('#songres');if(!box)return;const q=($('#songq')?.value||'').toLowerCase().trim();if(!q){box.innerHTML='';return}
+  const r=S.songs.filter(s=>(s.title+' '+s.artist+' '+s.tags.join(' ')).toLowerCase().includes(q)).slice(0,6);
+  box.innerHTML=r.length?r.map(s=>`<div class="item"><div class="grow"><div class="t">${esc(s.title)}</div><div class="mini">${esc(s.artist)}</div></div><button class="btn" data-act="ew-add" data-id="${s.id}">${ic('plus',18)}Add</button></div>`).join(''):`<p class="muted small" style="padding-top:10px">No library match for that search. <a href="#/research">Research it</a> or <a href="#" data-act="song-new">add it manually</a>.</p>`}
+function markDirty(){EW.dirty=true;$('#dirty')?.removeAttribute('hidden');$('#revert')?.removeAttribute('hidden')}
+
+/* ---------- Music library ---------- */
+const LIB={q:'',tag:''};
+function libHTML(){const q=LIB.q.toLowerCase();const l=S.songs.filter(s=>(!q||(s.title+' '+s.artist+' '+s.version).toLowerCase().includes(q))&&(!LIB.tag||s.tags.includes(LIB.tag))).sort((a,b)=>a.title.localeCompare(b.title));
+  return l.length?l.map(s=>{const uses=S.events.filter(e=>e.setlist.some(i=>i.songId===s.id)).length;return `<a class="item" href="#/song/${s.id}"><div class="grow"><div class="t">${esc(s.title)}${s.version?` <span class="muted">(${esc(s.version)})</span>`:''}</div><div class="mini"><span>${esc(s.artist||'Unknown artist')}</span>${s.key?`<span>Key ${esc(s.key)}</span>`:''}${s.tempo?`<span>${esc(s.tempo)} BPM</span>`:''}<span>${uses} event${uses===1?'':'s'}</span></div></div>${s.demo?'<span class="pill">Demo</span>':''}</a>`}).join(''):(S.songs.length?'<p class="muted">No songs match.</p>':empty('Your library is empty.','Add song',null,'song-new'))}
+const musicTabs=on=>`<nav class="tabs"><a href="#/music" class="${on==='lib'?'on':''}">Library</a><a href="#/research" class="${on==='res'?'on':''}">Research</a></nav>`;
+function vMusic(){const tags=[...new Set(S.songs.flatMap(s=>s.tags))].sort();
+  return `<header class="pagehead"><h1>Music</h1><button class="btn primary" data-act="song-new">${ic('plus')}Add song</button></header>${musicTabs('lib')}
+  <div class="row wrap" style="margin-bottom:12px"><div class="search grow" style="min-width:200px">${ic('search',18)}<input id="libq" placeholder="Search title, artist, version" value="${esc(LIB.q)}" aria-label="Search library"></div>
+  <select id="libtag" style="width:auto" aria-label="Filter by tag"><option value="">All tags</option>${tags.map(t=>`<option ${LIB.tag===t?'selected':''}>${esc(t)}</option>`).join('')}</select></div>
+  <section class="card"><div class="list" id="liblist">${libHTML()}</div></section>`}
+function vSong(id){const s=song(id);if(!s)return notFound('That song is not in your library.','#/music');
+  const uses=S.events.filter(e=>e.setlist.some(i=>i.songId===s.id));
+  const lk=(l,u)=>u?`<a class="item" href="${esc(u)}" target="_blank" rel="noopener noreferrer">${ic('link',18)}<span class="grow">${l}</span><span class="muted small">Opens external site</span></a>`:`<div class="item">${ic('link',18)}<span class="grow muted">${l}: not added</span></div>`;
+  return `<a href="#/music" class="btn ghost" style="padding-left:4px;margin-bottom:6px">${ic('back')}Library</a>
+  <header class="pagehead"><div><h1>${esc(s.title)}</h1><p class="muted">${esc(s.artist||'Unknown artist')}${s.version?' · '+esc(s.version):''}</p></div><div class="row"><button class="btn" data-act="song-edit" data-id="${s.id}">${ic('edit',18)}Edit</button><button class="btn primary" data-act="song-to-event" data-id="${s.id}">${ic('plus',18)}Add to event</button></div></header>
+  <div class="grid2">
+   <section class="card stack"><h2>Details</h2>
+    <div class="mini"><span>Key: ${esc(s.key||'not set')}</span><span>Tempo: ${s.tempo?esc(s.tempo)+' BPM':'not set'}</span></div>
+    ${s.demo?'<p class="note warn">Demo record. Key and tempo are placeholders, not verified against a source.</p>':''}
+    <div><h3 style="margin-bottom:4px">Rights</h3><p class="muted">${esc(s.rights||'Not recorded')}</p></div>
+    ${s.notes?`<div><h3 style="margin-bottom:4px">Notes</h3><p class="muted">${esc(s.notes)}</p></div>`:''}
+    <div class="chips">${s.tags.map(t=>`<span class="pill">${esc(t)}</span>`).join('')}</div></section>
+   <section class="card"><h2 style="margin-bottom:8px">Resources</h2><div class="list">${lk('Reference recording',s.links.video)}${lk('Authorized lyrics page',s.links.lyrics)}${lk('Chart or sheet music',s.links.chart)}</div>
+    <p class="small muted" style="margin-top:10px">CueSync links to lyrics; it does not store or display them.</p></section>
+   <section class="card"><h2 style="margin-bottom:8px">Used in</h2><div class="list">${uses.map(evRow).join('')||'<p class="muted">Not in any event yet.</p>'}</div></section>
+  </div>
+  <div style="margin-top:16px"><button class="btn danger" data-act="song-del" data-id="${s.id}">${ic('trash',18)}Delete song</button></div>`}
+function songForm(s,fromResearch){s=s||{title:'',artist:'',version:'',key:'',tempo:'',tags:[],links:{video:'',lyrics:'',chart:''},rights:'',notes:''};
+  modal(`<h2>${s.id?'Edit song':fromResearch?'Save to library':'Add song'}</h2>${fromResearch?'<p class="note small">Correct anything that looks wrong before saving. Research results are not verified.</p>':''}
+  <div class="fields two">
+   <label class="f" style="grid-column:1/-1">Title<input id="sf-title" value="${esc(s.title)}"><span class="err" id="sf-err"></span></label>
+   <label class="f">Artist or composer<input id="sf-artist" value="${esc(s.artist)}"></label>
+   <label class="f">Version or arrangement<input id="sf-version" value="${esc(s.version)}" placeholder="Optional"></label>
+   <label class="f">Key<input id="sf-key" value="${esc(s.key)}" placeholder="Leave blank if unconfirmed"></label>
+   <label class="f">Tempo (BPM)<input id="sf-tempo" value="${esc(s.tempo)}" inputmode="numeric"></label>
+   <label class="f" style="grid-column:1/-1">Tags<input id="sf-tags" value="${esc(s.tags.join(', '))}" placeholder="hymn, upbeat, communion"></label>
+   <label class="f" style="grid-column:1/-1">Reference recording URL<input id="sf-video" value="${esc(s.links.video)}" placeholder="https://"></label>
+   <label class="f" style="grid-column:1/-1">Authorized lyrics page URL<input id="sf-lyrics" value="${esc(s.links.lyrics)}" placeholder="https://"></label>
+   <label class="f" style="grid-column:1/-1">Chart or sheet music URL<input id="sf-chart" value="${esc(s.links.chart)}" placeholder="https://"></label>
+   <label class="f" style="grid-column:1/-1">Rights or licensing note<input id="sf-rights" value="${esc(s.rights)}" placeholder="e.g. CCLI covered, public domain verified"></label>
+   <label class="f" style="grid-column:1/-1">Notes<textarea id="sf-notes">${esc(s.notes)}</textarea></label>
+  </div><div class="actions"><button class="btn" data-act="close-modal">Cancel</button><button class="btn primary" id="sf-save">${s.id?'Save changes':'Save song'}</button></div>`);
+  return new Promise(res=>{$('#sf-save').onclick=()=>{const v=k=>$('#sf-'+k).value.trim();const err=$('#sf-err');
+    const data={title:v('title'),artist:v('artist'),version:v('version'),key:v('key'),tempo:v('tempo'),tags:v('tags').split(',').map(t=>t.trim().toLowerCase()).filter(Boolean),links:{video:v('video'),lyrics:v('lyrics'),chart:v('chart')},rights:v('rights'),notes:v('notes')};
+    if(!data.title){err.textContent='Add a title.';return}
+    for(const [k,u] of Object.entries(data.links)){if(u&&!isUrl(u)){err.textContent='Links must be full https:// addresses. Check the '+k+' link.';return}}
+    if(data.tempo&&!/^\d{2,3}$/.test(data.tempo)){err.textContent='Tempo should be a number like 72.';return}
+    const dup=S.songs.find(x=>x.id!==s.id&&x.title.toLowerCase()===data.title.toLowerCase()&&x.artist.toLowerCase()===data.artist.toLowerCase()&&x.version.toLowerCase()===data.version.toLowerCase());
+    if(dup){err.innerHTML=`“${esc(dup.title)}” by this artist is already in your library. Add a version name if this is a different arrangement.`;return}
+    let rec;if(s.id){rec=song(s.id);Object.assign(rec,data,{demo:false});log('Edited song “'+data.title+'”')}else{rec={id:uid(),...data,demo:false,created:Date.now()};S.songs.push(rec);log('Added “'+data.title+'” to the library')}
+    save();closeModal();toast(s.id?'Song updated':'Song saved to library');res(rec)}})}
+function pickEvent(songId){if(!S.events.length){toast('Create an event first',true);return}
+  modal(`<h2>Add to event</h2><div class="list">${[...S.events].sort(byDate).map(e=>`<button class="item" style="border-left:0;border-right:0;border-bottom:0;background:none;text-align:left;width:100%;font:inherit;cursor:pointer" data-pick="${e.id}"><div class="grow"><div class="t">${esc(e.title)}</div><div class="mini">${fmtDate(e.date,e.time)}</div></div>${ic('plus',18)}</button>`).join('')}</div><div class="actions"><button class="btn" data-act="close-modal">Cancel</button></div>`);
+  document.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{const e=ev(b.dataset.pick);e.setlist.push({id:uid(),songId,key:'',tempo:'',notes:''});e.updated=Date.now();if(EW&&EW.id===e.id&&!EW.dirty)EW=null;log('Added “'+song(songId).title+'” to '+e.title);save();closeModal();toast('Added to '+e.title);render()})}
+
+/* ---------- Research (demo data, clearly labeled) ---------- */
+const DEMO_RES=[
+ {title:'Amazing Grace',artist:'John Newton (text), traditional tune',tags:'hymn grace'},
+ {title:'Be Thou My Vision',artist:'Traditional Irish, tr. Mary Byrne',tags:'hymn'},
+ {title:'Lift Every Voice and Sing',artist:'J. W. Johnson and J. R. Johnson',tags:'anthem'},
+ {title:'Great Is Thy Faithfulness',artist:'T. Chisholm and W. Runyan',tags:'hymn'},
+ {title:'Holy, Holy, Holy',artist:'Reginald Heber (text), J. B. Dykes (tune)',tags:'hymn trinity'},
+ {title:'Swing Low, Sweet Chariot',artist:'Traditional spiritual',tags:'spiritual'},
+ {title:'When the Saints Go Marching In',artist:'Traditional',tags:'gospel jazz gig'},
+ {title:'Down by the Riverside',artist:'Traditional spiritual',tags:'spiritual gig'},
+ {title:'Ode to Joy',artist:'Ludwig van Beethoven',tags:'orchestra classical'},
+ {title:'Jesu, Joy of Man’s Desiring',artist:'J. S. Bach',tags:'orchestra choir classical'}];
+let RES={q:'',results:null};
+function vResearch(){const r=RES.results;
+  return `<header class="pagehead"><h1>Music</h1></header>${musicTabs('res')}
+  <p class="note warn" style="margin-bottom:14px"><b>Demonstration results.</b> No search provider is connected, so results come from a small built-in list. Nothing here has been verified, and no recording or lyrics links are invented.</p>
+  <div class="row" style="margin-bottom:16px"><div class="search grow">${ic('search',18)}<input id="resq" placeholder="Song title, artist, or style" value="${esc(RES.q)}" aria-label="Search for music" enterkeyhint="search"></div><button class="btn primary" data-act="res-go">Search</button></div>
+  ${r===null?'<p class="muted">Try “hymn”, “spiritual”, or “Bach”.</p>':r.length?`<div class="grid2">${r.map((x,i)=>`<article class="card stack"><div><h3>${esc(x.title)}</h3><p class="muted small">${esc(x.artist)}</p></div><div class="chips"><span class="pill">Demo result</span><span class="pill warn">Not verified</span></div>
+   <div class="row wrap"><a class="btn" href="https://www.youtube.com/results?search_query=${encodeURIComponent(x.title+' '+x.artist.split(',')[0])}" target="_blank" rel="noopener noreferrer">${ic('link',18)}Search YouTube</a><button class="btn primary" data-act="res-save" data-id="${i}">${ic('plus',18)}Save to library</button></div></article>`).join('')}</div>`:`<div class="empty"><p class="muted">No demo match for “${esc(RES.q)}”. Real search arrives once a provider is connected.</p><button class="btn" data-act="song-new">Add it manually</button></div>`}`}
+function runResearch(){RES.q=($('#resq')?.value||'').trim();const q=RES.q.toLowerCase();RES.results=q?DEMO_RES.filter(x=>(x.title+' '+x.artist+' '+x.tags).toLowerCase().includes(q)):[];render()}
+
+/* ---------- Groups ---------- */
+function vGroups(){return `<header class="pagehead"><h1>Groups</h1><button class="btn primary" data-act="group-new">${ic('plus')}New group</button></header>
+  ${S.groups.length?`<div class="grid2">${S.groups.map(g=>{const ch=channels(g);return `<a class="card" href="#/group/${g.id}" style="text-decoration:none;color:var(--ink)"><div class="row between"><h2>${esc(g.name)}</h2>${ic('fwd',18)}</div><p class="muted small" style="margin:4px 0 10px">${esc(g.type)}${g.desc?' · '+esc(g.desc):''}</p><div class="mini"><span>${g.members.length} member${g.members.length===1?'':'s'}</span><span>${ch.email} email</span><span>${ch.text} text</span></div></a>`}).join('')}</div>`:empty('Groups hold the people you send music to.','New group',null,'group-new')}`}
+function channels(g){let email=0,text=0;g.members.forEach(m=>{const c=contact(m.contactId);if(!c)return;if(c.email)email++;if(c.phone)text++});return{email,text}}
+let MEMQ='';
+function memHTML(g){const q=MEMQ.toLowerCase();const l=g.members.map(m=>({...m,c:contact(m.contactId)})).filter(m=>m.c&&(!q||(m.c.name+' '+m.role+' '+m.c.email).toLowerCase().includes(q)));
+  return l.length?l.map(m=>{const others=S.groups.filter(x=>x.id!==g.id&&x.members.some(y=>y.contactId===m.contactId)).length;return `<div class="item"><div class="grow"><div class="t">${esc(m.c.name)}</div><div class="mini"><span>${esc(m.role||'No role')}</span><span>${esc(m.c.email||'No email')}</span>${m.c.phone?`<span>${esc(m.c.phone)}</span>`:''}<span>Prefers ${m.c.channel==='text'?'text':'email'}</span>${others?`<span class="pill accent">In ${others} other group${others>1?'s':''}</span>`:''}</div></div><button class="btn icon ghost" data-act="mem-edit" data-id="${m.contactId}" aria-label="Edit ${esc(m.c.name)}">${ic('edit',18)}</button><button class="btn icon ghost" data-act="mem-rm" data-id="${m.contactId}" aria-label="Remove ${esc(m.c.name)} from group">${ic('trash',18)}</button></div>`}).join(''):(g.members.length?'<p class="muted">No members match.</p>':empty('No members yet.','Add member',null,'mem-add'))}
+let GID='';
+function vGroup(id){const g=grp(id);if(!g)return notFound('That group no longer exists.','#/groups');if(GID!==id){GID=id;MEMQ=''}
+  const evs=S.events.filter(e=>e.groupIds.includes(g.id)).sort(byDate);const msgs=S.messages.filter(m=>m.groupIds.includes(g.id));
+  return `<a href="#/groups" class="btn ghost" style="padding-left:4px;margin-bottom:6px">${ic('back')}Groups</a>
+  <header class="pagehead"><div><h1>${esc(g.name)}</h1><p class="muted">${esc(g.type)}</p></div><div class="row"><button class="btn" data-act="group-edit" data-id="${g.id}">${ic('edit',18)}Edit group</button><button class="btn danger icon" data-act="group-del" data-id="${g.id}" aria-label="Delete group">${ic('trash',18)}</button></div></header>
+  <div class="stack">
+  ${g.desc||g.prefs?`<section class="card stack">${g.desc?`<p>${esc(g.desc)}</p>`:''}${g.prefs?`<p class="small"><b>Message preferences:</b> <span class="muted">${esc(g.prefs)}</span></p>`:''}</section>`:''}
+  <section class="card"><div class="sechead"><h2>Members</h2><button class="btn" data-act="mem-add">${ic('plus',18)}Add member</button></div>
+   ${g.members.length>3?`<div class="search" style="margin-bottom:8px">${ic('search',18)}<input id="memq" placeholder="Search members" value="${esc(MEMQ)}" aria-label="Search members"></div>`:''}
+   <div class="list" id="memlist">${memHTML(g)}</div>
+   <p class="small muted" style="margin-top:8px">Contact details are shared: editing a person here updates them in every group.</p></section>
+  <div class="grid2"><section class="card"><h2 style="margin-bottom:8px">Events</h2><div class="list">${evs.map(evRow).join('')||'<p class="muted">Not assigned to any event.</p>'}</div></section>
+  <section class="card"><h2 style="margin-bottom:8px">Message history</h2><div class="list">${msgs.map(msgRow).join('')||'<p class="muted">No messages yet.</p>'}</div></section></div></div>`}
+function groupForm(g){g=g||{name:'',type:'Worship team',desc:'',prefs:''};
+  modal(`<h2>${g.id?'Edit group':'New group'}</h2><div class="fields"><label class="f">Group name<input id="gf-name" value="${esc(g.name)}" placeholder="e.g. Worship Team"><span class="err" id="gf-err"></span></label>
+  <label class="f">Group type<select id="gf-type">${GTYPES.map(t=>`<option ${g.type===t?'selected':''}>${t}</option>`).join('')}</select></label>
+  <label class="f">Description<input id="gf-desc" value="${esc(g.desc)}"></label>
+  <label class="f">Message preferences<textarea id="gf-prefs" placeholder="What this group always needs in a message">${esc(g.prefs)}</textarea></label></div>
+  <div class="actions"><button class="btn" data-act="close-modal">Cancel</button><button class="btn primary" id="gf-save">${g.id?'Save changes':'Create group'}</button></div>`);
+  $('#gf-save').onclick=()=>{const name=$('#gf-name').value.trim();if(!name){$('#gf-err').textContent='Add a group name.';return}
+    if(S.groups.some(x=>x.id!==g.id&&x.name.toLowerCase()===name.toLowerCase())){$('#gf-err').textContent='A group with this name already exists.';return}
+    const data={name,type:$('#gf-type').value,desc:$('#gf-desc').value.trim(),prefs:$('#gf-prefs').value.trim()};
+    if(g.id){Object.assign(grp(g.id),data);log('Edited group '+name);save();closeModal();toast('Group updated');render()}
+    else{const n={id:uid(),...data,members:[]};S.groups.push(n);log('Created group '+name);save();closeModal();toast('Group created');go('#/group/'+n.id)}}}
+function memberForm(g,contactId){const c=contactId?contact(contactId):null;const m=c?g.members.find(x=>x.contactId===contactId):null;
+  const avail=S.contacts.filter(x=>!g.members.some(y=>y.contactId===x.id));
+  modal(`<h2>${c?'Edit member':'Add member'}</h2>
+  ${!c&&avail.length?`<label class="f">Existing contact<select id="mf-existing"><option value="">New person</option>${avail.map(x=>`<option value="${x.id}">${esc(x.name)} (${esc(x.email||x.phone)})</option>`).join('')}</select></label>`:''}
+  <div class="fields two" id="mf-new"><label class="f" style="grid-column:1/-1">Name<input id="mf-name" value="${esc(c?.name)}"></label>
+   <label class="f">Email<input id="mf-email" type="email" value="${esc(c?.email)}" autocomplete="off"></label>
+   <label class="f">Phone (optional)<input id="mf-phone" type="tel" value="${esc(c?.phone)}" autocomplete="off"></label>
+   <label class="f">Preferred channel<select id="mf-channel"><option value="email" ${c?.channel!=='text'?'selected':''}>Email</option><option value="text" ${c?.channel==='text'?'selected':''}>Text</option></select></label></div>
+  <label class="f">Role in ${esc(g.name)}<input id="mf-role" value="${esc(m?.role)}" placeholder="e.g. Alto, Bass, Keys"></label><span class="err" id="mf-err"></span>
+  <div class="actions"><button class="btn" data-act="close-modal">Cancel</button><button class="btn primary" id="mf-save">${c?'Save changes':'Add member'}</button></div>`);
+  const ex=$('#mf-existing');if(ex)ex.oninput=()=>{$('#mf-new').style.display=ex.value?'none':''};
+  $('#mf-save').onclick=()=>{const err=$('#mf-err');const role=$('#mf-role').value.trim();
+    if(ex&&ex.value){g.members.push({contactId:ex.value,role});log('Added '+contact(ex.value).name+' to '+g.name);save();closeModal();toast('Member added');render();return}
+    const d={name:$('#mf-name').value.trim(),email:$('#mf-email').value.trim(),phone:$('#mf-phone').value.trim(),channel:$('#mf-channel').value};
+    if(!d.name){err.textContent='Add a name.';return}
+    if(!d.email&&!d.phone){err.textContent='Add an email or a phone number so this person can be reached.';return}
+    if(d.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)){err.textContent='That email address looks incomplete.';return}
+    if(d.channel==='text'&&!d.phone){err.textContent='Add a phone number, or set the preferred channel to email.';return}
+    const clash=d.email&&S.contacts.find(x=>x.id!==c?.id&&x.email.toLowerCase()===d.email.toLowerCase());
+    if(clash){err.textContent=clash.name+' already uses this email. Pick them from Existing contact instead.';return}
+    if(c){Object.assign(c,d);m.role=role;log('Edited contact '+d.name)}else{const n={id:uid(),...d};S.contacts.push(n);g.members.push({contactId:n.id,role});log('Added '+d.name+' to '+g.name)}
+    save();closeModal();toast(c?'Member updated':'Member added');render()}}
+
+/* ---------- Composer ---------- */
+let C=null;
+function newC(evId){const c={step:1,eventId:'',groupIds:[],itemIds:[],channel:'email',tone:TONES[0],detail:'Standard',purpose:PURPOSES[0],extra:'',drafts:{},msgIds:{},active:'',busy:false,reviewed:false};if(evId)chooseEvent(c,evId);return c}
+function chooseEvent(c,id){const e=ev(id);c.eventId=id;c.groupIds=[...e.groupIds];c.itemIds=e.setlist.map(i=>i.id);c.drafts={};c.msgIds={};c.step=2}
+const STEPNAMES=['Event','Groups','Music','Customize','Generate','Review','Confirm'];
+function vCompose(msgId){
+  if(msgId){const m=S.messages.find(x=>x.id===msgId);if(!m)return notFound('That message was deleted.','#/messages');
+    if(!C||C.msgIds[m.groupIds[0]]!==m.id){const e=ev(m.eventId);C=newC();Object.assign(C,{eventId:m.eventId,groupIds:[...m.groupIds],itemIds:e?e.setlist.map(i=>i.id):[],channel:m.channel,tone:m.tone||TONES[0],detail:m.detail||'Standard',purpose:m.purpose||PURPOSES[0],step:6,active:m.groupIds[0]});C.drafts[m.groupIds[0]]={subject:m.subject,body:m.body,source:m.source,warnings:[]};C.msgIds[m.groupIds[0]]=m.id}}
+  if(!C)C=newC();
+  const e=ev(C.eventId);if(C.step>1&&!e){C=newC()}
+  const steps=`<ol class="steps" aria-label="Progress">${STEPNAMES.map((n,i)=>`<li class="${C.step===i+1?'on':C.step>i+1?'done':''}" ${C.step===i+1?'aria-current="step"':''}><b>${C.step>i+1?'✓':i+1}</b>${n}</li>`).join('')}</ol>`;
+  return `<header class="pagehead"><div><h1>Prepare music &amp; send</h1>${e?`<p class="muted">${esc(e.title)}, ${fmtDate(e.date,e.time)}</p>`:''}</div><button class="btn ghost" data-act="compose-reset">Start over</button></header>${steps}${[s1,s2,s3,s4,s5,s6,s7][C.step-1]()}`}
+const wiz=(back,next,nextLabel='Continue',disabled)=>`<div class="wizbar">${back?`<button class="btn lg" data-act="c-back">${ic('back')}Back</button>`:'<span></span>'}${next?`<button class="btn primary lg" data-act="c-next" ${disabled?'disabled':''}>${nextLabel}${ic('fwd')}</button>`:''}</div>`;
+function s1(){const l=[...S.events].sort(byDate);return `<section class="stack"><h2>Which event is this for?</h2>${l.map(e=>`<button class="pick ${C.eventId===e.id?'on':''}" data-act="c-event" data-id="${e.id}" style="text-align:left;font:inherit;color:inherit"><div class="grow"><div class="t">${esc(e.title)}</div><div class="mini"><span>${fmtDate(e.date,e.time)}</span><span>${e.setlist.length} songs</span></div></div>${ic('fwd',18)}</button>`).join('')||empty('No events yet.','Create event','#/event/new')}
+  ${l.length?`<a class="btn" href="#/event/new" style="justify-self:start">${ic('plus',18)}Create a new event</a>`:''}</section>`}
+function s2(){return `<section class="stack"><h2>Who should get it?</h2><p class="muted small">Each group gets its own draft, written for that group.</p>
+  ${S.groups.map(g=>{const ch=channels(g),on=C.groupIds.includes(g.id);return `<label class="pick ${on?'on':''}"><input type="checkbox" data-act="c-group" data-id="${g.id}" ${on?'checked':''}><div class="grow"><div class="t">${esc(g.name)}</div><div class="mini"><span>${g.members.length} members</span><span>${ch.email} with email</span><span>${ch.text} with phone</span></div></div></label>`}).join('')||empty('No groups yet.','New group','#/groups')}</section>${wiz(true,true,'Continue',!C.groupIds.length)}`}
+function s3(){const e=ev(C.eventId);return `<section class="stack"><h2>Which songs go in the message?</h2>
+  ${e.setlist.length?e.setlist.map((it,i)=>{const s=song(it.songId);if(!s)return'';const on=C.itemIds.includes(it.id);const n=Object.values(s.links).filter(Boolean).length;return `<label class="pick ${on?'on':''}"><input type="checkbox" data-act="c-item" data-id="${it.id}" ${on?'checked':''}><div class="cue-n" style="font-size:24px;width:30px">${i+1}</div><div class="grow"><div class="t">${esc(s.title)}</div><div class="mini"><span>${esc(s.artist)}</span><span>${n?n+' saved link'+(n>1?'s':''):'No saved links'}</span></div></div></label>`}).join(''):`<div class="empty"><p class="muted">This event has no songs yet.</p><a class="btn" href="#/event/${e.id}">Open setlist</a></div>`}
+  <p class="small muted">Only links saved on each song are included. CueSync never adds links it has not stored.</p></section>${wiz(true,true)}`}
+function s4(){const sel=(k,opts)=>`<select data-c="${k}">${opts.map(o=>`<option ${C[k]===o?'selected':''}>${o}</option>`).join('')}</select>`;
+  return `<section class="card"><div class="fields two">
+  <label class="f">Channel<select data-c="channel"><option value="email" ${C.channel==='email'?'selected':''}>Email</option><option value="text" ${C.channel==='text'?'selected':''}>Text message</option></select></label>
+  <label class="f">Purpose${sel('purpose',PURPOSES)}</label><label class="f">Tone${sel('tone',TONES)}</label><label class="f">Level of detail${sel('detail',DETAILS)}</label>
+  <label class="f" style="grid-column:1/-1">Anything else to include?<textarea data-c="extra" placeholder="e.g. Parking lot B is closed this week">${esc(C.extra)}</textarea></label></div></section>${wiz(true,true)}`}
+function s5(){return `<section class="card stack" style="text-align:center;justify-items:center;padding:32px 18px">
+  ${C.busy?`<div class="spinner" role="status" aria-label="Generating"></div><p>Writing ${C.groupIds.length} draft${C.groupIds.length>1?'s':''}…</p>`:`<h2>Ready to draft ${C.groupIds.length} message${C.groupIds.length>1?'s':''}</h2>
+  <p class="muted">${AI?'Claude writes each draft from your event data only. Contact details are never sent to the AI.':'AI drafting is not available in this view, so CueSync will build each draft from a template.'}</p>
+  <button class="btn primary lg" data-act="c-generate">${ic('spark')}Generate drafts</button>`}</section>${C.busy?'':wiz(true,false)}`}
+function s6(){const g=grp(C.active)||grp(C.groupIds[0]);if(!g)return'';C.active=g.id;const d=C.drafts[g.id];
+  const tabs=C.groupIds.length>1?`<nav class="tabs">${C.groupIds.map(id=>`<a href="#" data-act="c-tab" data-id="${id}" class="${id===g.id?'on':''}">${esc(grp(id)?.name||'Group')}</a>`).join('')}</nav>`:'';
+  if(!d)return tabs+`<div class="empty"><p class="muted">No draft for this group yet.</p><button class="btn primary" data-act="c-regen">Generate draft</button></div>`+wiz(true,false);
+  return `${tabs}<section class="card stack"><div class="row between wrap"><h2>${esc(g.name)}</h2><span class="pill ${d.source==='ai'?'accent':''}">${d.source==='ai'?'AI draft':'Template draft'}${d.edited?', edited':''}</span></div>
+  ${(d.warnings||[]).map(w=>`<p class="note warn small">${esc(w)}</p>`).join('')}
+  ${C.channel==='email'?`<label class="f">Subject<input data-cd="subject" value="${esc(d.subject)}"></label>`:''}
+  <label class="f">Message<textarea class="body" data-cd="body">${esc(d.body)}</textarea></label>
+  <div class="row wrap"><button class="btn" data-act="c-regen" ${C.busy?'disabled':''}>${ic('spark',18)}${C.busy?'Working…':'Regenerate'}</button><button class="btn" data-act="c-shorter" ${C.busy?'disabled':''}>Make shorter</button><button class="btn" data-act="c-save">Save draft</button></div></section>
+  ${wiz(true,true,'Review recipients')}`}
+function recipients(gid){const g=grp(gid);return g?g.members.map(m=>({...contact(m.contactId),role:m.role})).filter(x=>x.id):[]}
+function s7(){const all=new Map();C.groupIds.forEach(gid=>recipients(gid).forEach(r=>{all.set(r.id,(all.get(r.id)||[]).concat(gid))}));
+  const multi=[...all.entries()].filter(([,g])=>g.length>1).map(([id])=>contact(id).name);
+  return `<section class="stack">
+  <div class="note"><b>${all.size} ${all.size===1?'person':'people'}</b> across <b>${C.groupIds.length} group${C.groupIds.length>1?'s':''}</b> by <b>${C.channel==='email'?'email':'text message'}</b>.${multi.length?` ${esc(multi.join(', '))} ${multi.length>1?'are':'is'} in more than one group and will get one message per group.`:''}</div>
+  ${C.groupIds.map(gid=>{const g=grp(gid),d=C.drafts[gid],r=recipients(gid);const reach=r.filter(x=>C.channel==='email'?x.email:x.phone),miss=r.filter(x=>!(C.channel==='email'?x.email:x.phone));const m=S.messages.find(x=>x.id===C.msgIds[gid]);
+   return `<article class="card stack"><div class="row between wrap"><h2>${esc(g.name)}</h2>${m?statusPill(m.status):'<span class="pill">Not saved</span>'}</div>
+   <div><h3 style="margin-bottom:6px">Recipients (${reach.length})</h3><div class="chips">${reach.map(x=>`<span class="pill">${esc(x.name)}: ${esc(C.channel==='email'?x.email:x.phone)}</span>`).join('')||'<span class="muted">No one in this group can be reached by this channel.</span>'}</div>
+   ${miss.length?`<p class="err" style="margin-top:6px">Missing ${C.channel==='email'?'email':'phone'}: ${esc(miss.map(x=>x.name).join(', '))}</p>`:''}</div>
+   ${d?`<div class="preview">${C.channel==='email'?`<b>Subject: ${esc(d.subject)}</b>\n\n`:''}${esc(d.body)}</div>
+   <div class="row wrap"><button class="btn" data-act="c-copy" data-id="${gid}" ${C.reviewed?'':'disabled'}>${ic('copy',18)}Copy message</button>${C.channel==='email'?`<button class="btn" data-act="c-mailto" data-id="${gid}" ${C.reviewed&&reach.length?'':'disabled'}>${ic('mail',18)}Open in email app</button>`:''}<button class="btn" data-act="c-approval" data-id="${gid}">Mark awaiting approval</button></div>`:'<p class="err">No draft yet. Go back to generate one.</p>'}</article>`}).join('')}
+  <section class="card stack"><label class="row" style="cursor:pointer"><input type="checkbox" data-act="c-reviewed" ${C.reviewed?'checked':''}><span>I reviewed the recipients and the final message.</span></label>
+   <button class="btn primary lg" disabled title="No email provider is connected">${ic('send')}Send with connected provider</button>
+   <p class="small muted">Sending directly needs an email provider connected on a server (Phase 4). Until then, copy the message or open it in your email app. CueSync records that you handed it off, not that it was delivered.</p></section></section>${wiz(true,false)}`}
+
+function songsForMsg(){const e=ev(C.eventId);return e.setlist.filter(it=>C.itemIds.includes(it.id)).map(it=>{const s=song(it.songId);return s?{title:s.title,artist:s.artist,key:it.key||s.key||'',tempo:it.tempo||s.tempo||'',notes:it.notes||'',links:Object.entries(s.links).filter(([,u])=>u).map(([k,u])=>({kind:k==='video'?'Recording':k==='lyrics'?'Lyrics':'Chart',url:u}))}:null}).filter(Boolean)}
+function groupGuidance(t){if(/choir|vocal/i.test(t))return'Please learn your parts with the reference recordings and bring your music marked.';if(/orchestra/i.test(t))return'Please review your parts and arrive early enough to set up and tune.';if(/band|worship|guest/i.test(t))return'Please review keys and transitions and have your charts ready before rehearsal.';return'Please review the songs below before we meet.'}
+function templateDraft(g,short){const e=ev(C.eventId),songs=songsForMsg(),sign=S.settings.leader||'Your music director';const brief=short||C.detail==='Brief';
+  const hi=C.tone==='Professional'?`Hello ${g.name},`:C.tone==='Brief and direct'?`${g.name},`:`Hi ${g.name} family,`;
+  const L=[hi,'',`${C.purpose==='Last-minute change'?'Quick update for':'Here is the plan for'} ${e.title}: ${fmtDate(e.date,e.time)}${e.location?' at '+e.location:''}.`,''];
+  if(songs.length){L.push('Setlist:');songs.forEach((s,i)=>{const meta=[s.key&&'Key '+s.key,s.tempo&&s.tempo+' BPM'].filter(Boolean).join(', ');L.push(`${i+1}. ${s.title}${meta?' ('+meta+')':''}`);if(!brief&&s.notes)L.push('   '+s.notes);if(!brief)s.links.forEach(l=>L.push(`   ${l.kind}: ${l.url}`))});L.push('')}
+  if(!brief)L.push(groupGuidance(g.type));
+  if(e.instructions)L.push(e.instructions);
+  if(e.deadline)L.push(`Please be prepared by ${fmtDate(e.deadline)}.`);
+  if(C.extra)L.push(C.extra);
+  L.push('',C.tone==='Professional'?'Thank you,':'Thanks, see you there!',sign);
+  return{subject:`${e.title}: ${C.purpose==='Last-minute change'?'update':'setlist and details'} (${fmtDate(e.date)})`,body:L.join('\n').replace(/\n{3,}/g,'\n\n'),source:'template',warnings:[]}}
+function checkLinks(body){const allowed=new Set(songsForMsg().flatMap(s=>s.links.map(l=>l.url)));const found=body.match(/https?:\/\/[^\s)>\]]+/g)||[];return found.filter(u=>!allowed.has(u.replace(/[.,;]$/,'')))}
+async function aiDraft(g,mode){const e=ev(C.eventId);
+  const data={event:{title:e.title,type:e.type,date:fmtDate(e.date,e.time),location:e.location,prepareBy:e.deadline?fmtDate(e.deadline):'',instructions:e.instructions},group:{name:g.name,type:g.type,description:g.desc,preferences:g.prefs},songs:songsForMsg(),purpose:C.purpose,tone:C.tone,detail:mode==='shorter'?'Brief':C.detail,channel:C.channel,extraInstructions:C.extra,signOff:S.settings.leader||'Your music director'};
+  const prev=mode==='shorter'&&C.drafts[g.id]?`\nShorten this existing draft while keeping every fact, song, and link it contains:\n${C.drafts[g.id].body}\n`:'';
+  const prompt=`You write messages from a music leader to one music group.
+Write one ${C.channel==='email'?'email':'text message (keep it under 600 characters)'} for the group in DATA.
+Rules:
+- Use only facts in DATA. Do not invent dates, times, keys, tempos, names, or links.
+- List the songs in the given order, numbered. Include a link only if it appears in that song's links, copied exactly.
+- Never include song lyrics.
+- Tailor the preparation guidance to the group type and preferences.
+- Match the requested tone, detail, and purpose. End with the signOff name.
+Return only JSON, no code fences: {"subject": string, "body": string}. The body is plain text with line breaks.${prev}
+DATA:
+${JSON.stringify(data)}`;
+  const r=await AI(prompt,{modelTier:'quick',cache:false});const t=r.text||'';const j=JSON.parse(t.slice(t.indexOf('{'),t.lastIndexOf('}')+1));
+  if(typeof j.subject!=='string'||typeof j.body!=='string'||!j.body.trim())throw new Error('bad shape');
+  const bad=checkLinks(j.body);
+  return{subject:j.subject.trim(),body:j.body.trim(),source:'ai',warnings:bad.length?['The AI added links that are not saved on your songs. Remove them before sending: '+bad.join(', ')]:[]}}
+async function draftFor(gid,mode){const g=grp(gid);if(AI){try{return await aiDraft(g,mode)}catch(err){if(err&&err.code==='not_granted')AI=null;toast('AI draft failed, so a template draft was used instead.',true)}}return templateDraft(g,mode==='shorter')}
+async function generate(gids,mode){C.busy=true;render();for(const gid of gids){C.drafts[gid]=await draftFor(gid,mode)}C.busy=false;C.reviewed=false;if(C.step===5){C.step=6;C.active=gids[0]}render()}
+function saveDrafts(status,only){C.groupIds.forEach(gid=>{if(only&&gid!==only)return;const d=C.drafts[gid];if(!d)return;let m=S.messages.find(x=>x.id===C.msgIds[gid]);
+  if(!m){m={id:uid(),created:Date.now(),status:'draft'};S.messages.unshift(m);C.msgIds[gid]=m.id}
+  Object.assign(m,{eventId:C.eventId,groupIds:[gid],channel:C.channel,subject:d.subject,body:d.body,source:d.source,tone:C.tone,detail:C.detail,purpose:C.purpose,updated:Date.now()});if(status)m.status=status});save()}
+
+/* ---------- Message center ---------- */
+const MTABS=[['drafts','Drafts',['draft']],['approval','Awaiting approval',['approval']],['handed','Handed off',['copied','handed']],['sent','Sent',['sent']],['failed','Failed',['failed']]];
+function vMessages(tab){tab=MTABS.find(t=>t[0]===tab)?tab:'drafts';const [,label,sts]=MTABS.find(t=>t[0]===tab);const l=S.messages.filter(m=>sts.includes(m.status));
+  const emptyText={drafts:'No drafts. Start one from an event.',approval:'Nothing is waiting for approval.',handed:'Messages you copy or open in your email app show up here. CueSync can’t confirm they were delivered.',sent:'Nothing is marked sent, because no email provider is connected. CueSync only marks a message sent when a provider confirms it.',failed:'Failed sends appear here once a provider is connected.'}[tab];
+  return `<header class="pagehead"><h1>Message center</h1><button class="btn primary" data-act="compose-new">${ic('plus')}New message</button></header>
+  <nav class="tabs">${MTABS.map(([k,n,s])=>`<a href="#/messages/${k}" class="${k===tab?'on':''}">${n}<span class="pill">${S.messages.filter(m=>s.includes(m.status)).length}</span></a>`).join('')}</nav>
+  <section class="card"><div class="list">${l.length?l.map(m=>`<div class="item" style="flex-wrap:wrap"><a href="#/compose/${m.id}" class="grow" style="text-decoration:none;color:var(--ink);min-width:200px"><div class="t">${esc(m.subject||'Untitled')}</div><div class="mini"><span>${esc(ev(m.eventId)?.title||'Deleted event')}</span><span>${esc(m.groupIds.map(grp).filter(Boolean).map(g=>g.name).join(', '))}</span><span>${m.channel==='text'?'Text':'Email'}</span><span>Created ${new Date(m.created).toLocaleDateString()}</span></div></a>${statusPill(m.status)}<button class="btn icon ghost" data-act="msg-dup" data-id="${m.id}" aria-label="Duplicate">${ic('copy',18)}</button><button class="btn icon ghost" data-act="msg-del" data-id="${m.id}" aria-label="Delete">${ic('trash',18)}</button></div>`).join(''):`<p class="muted">${emptyText}</p>`}</div></section>`}
+
+/* ---------- More / integrations / settings ---------- */
+function vMore(){const L=[['research','Music research','search','Find songs to add to your library'],['messages','Message center','mail','Drafts, approvals, and history'],['compose','Prepare music & send','send','Build messages for your groups'],['integrations','Integrations','plug','What is connected and what is not'],['settings','Settings','gear','Workspace, your name, appearance']];
+  return `<header class="pagehead"><h1>More</h1></header><section class="card"><div class="list">${L.map(([k,n,i,d])=>`<a class="item" href="#/${k}">${ic(i)}<div class="grow"><div class="t">${n}</div><div class="mini">${d}</div></div>${ic('fwd',18)}</a>`).join('')}</div></section>`}
+function vIntegrations(){const R=(n,ok,st,d)=>`<div class="item" style="align-items:flex-start"><div class="grow"><div class="t">${n}</div><p class="muted small">${d}</p></div><span class="pill ${ok?'ok':''}">${st}</span></div>`;
+  return `<header class="pagehead"><h1>Integrations</h1></header><section class="card"><div class="list">
+  ${R('AI drafting',!!AI,AI?'Available':'Unavailable',AI?'Drafts are written by Claude from event data only. Contact details stay out of the prompt.':'Not available in this view. Drafts are built from templates.')}
+  ${R('Email sending',false,'Not connected','Needs a server-side provider such as Resend, Postmark, Gmail, or Outlook with stored credentials. Planned for Phase 4.')}
+  ${R('Music search',false,'Demo data','Real results need a search API (for example YouTube Data API) called from a server with its own key.')}
+  ${R('Lyrics',false,'Links only','CueSync stores links to authorized lyrics pages. Displaying lyrics needs a licensed provider.')}
+  ${R('Text messaging',false,'Not connected','Needs a provider such as Twilio, plus opt-in consent from each recipient.')}
+  </div></section>`}
+function vSettings(){return `<header class="pagehead"><h1>Settings</h1></header><section class="card"><div class="fields two">
+  <label class="f">Workspace name<input id="st-ws" value="${esc(S.settings.workspace)}"></label>
+  <label class="f">Your name (used to sign messages)<input id="st-leader" value="${esc(S.settings.leader)}" placeholder="e.g. Andrew Thomas"></label>
+  <label class="f">Appearance<select id="st-theme"><option value="system" ${S.settings.theme==='system'?'selected':''}>Match device</option><option value="light" ${S.settings.theme==='light'?'selected':''}>Light</option><option value="dark" ${S.settings.theme==='dark'?'selected':''}>Dark</option></select></label></div>
+  <div class="row" style="margin-top:16px"><button class="btn primary" data-act="st-save">Save settings</button></div></section>
+  <section class="card" style="margin-top:16px"><h2 style="margin-bottom:6px">Reset prototype</h2><p class="muted small" style="margin-bottom:12px">Erase everything in this browser and reload the demo workspace.</p><button class="btn danger" data-act="st-reset">Reset demo data</button></section>`}
+function notFound(msg,back){return `<div class="empty" style="margin-top:40px"><p>${msg}</p><a class="btn" href="${back}">Go back</a></div>`}
+
+/* ---------- Actions ---------- */
+const A={
+ 'close-modal':closeModal,
+ collapse(){S.settings.collapsed=!S.settings.collapsed;save();navRender(parse()[0])},
+ fab(){modal(`<h2>What do you want to do?</h2><div class="stack"><a class="btn primary lg" href="#/event/new" data-act="close-modal">${ic('plus')}Create event</a><button class="btn lg" data-act="compose-new">${ic('send')}Prepare music &amp; send</button><button class="btn lg" data-act="song-new">${ic('music')}Add song</button></div>`)},
+ 'compose-new'(){closeModal();C=newC();go('#/compose')},
+ 'compose-reset'(){confirmModal('Start over?','Unsaved drafts in this composer will be cleared. Saved drafts stay in the message center.','Start over',()=>{C=newC();go('#/compose')},false)},
+ 'ew-group'(id){const i=EW.groupIds.indexOf(id);i<0?EW.groupIds.push(id):EW.groupIds.splice(i,1);markDirty();render()},
+ 'ew-add'(id){EW.setlist.push({id:uid(),songId:id,key:'',tempo:'',notes:''});markDirty();render();toast('Added '+song(id).title);$('#songq')?.focus()},
+ 'ew-up'(i){i=+i;if(i>0){[EW.setlist[i-1],EW.setlist[i]]=[EW.setlist[i],EW.setlist[i-1]];markDirty();render();document.querySelector(`[data-act="ew-up"][data-id="${i-1}"]`)?.focus()}},
+ 'ew-down'(i){i=+i;if(i<EW.setlist.length-1){[EW.setlist[i+1],EW.setlist[i]]=[EW.setlist[i],EW.setlist[i+1]];markDirty();render();document.querySelector(`[data-act="ew-down"][data-id="${i+1}"]`)?.focus()}},
+ 'ew-rm'(i){const s=song(EW.setlist[+i].songId);confirmModal('Remove from setlist?',`“${esc(s?.title)}” will be removed from this event. It stays in your library.`,'Remove',()=>{EW.setlist.splice(+i,1);markDirty();render()})},
+ 'ew-save'(){let ok=true;$('#err-title').textContent='';$('#err-date').textContent='';
+  if(!EW.title.trim()){$('#err-title').textContent='Add a title for this event.';ok=false}
+  if(!EW.date){$('#err-date').textContent='Pick a date.';ok=false}
+  if(EW.deadline&&EW.date&&EW.deadline>EW.date){toast('The rehearsal deadline is after the event date.',true);ok=false}
+  if(!ok){toast('Fix the highlighted fields to save.',true);return}
+  const {isNew,dirty,...data}=EW;data.title=data.title.trim();data.updated=Date.now();
+  if(isNew){data.created=Date.now();S.events.push(data);log('Created event '+data.title)}else{const i=S.events.findIndex(x=>x.id===data.id);S.events[i]={...S.events[i],...data};log('Edited event '+data.title)}
+  save();EW=null;toast('Event saved');go('#/event/'+data.id)},
+ 'ew-revert'(){confirmModal('Discard changes?','Your edits to this event since the last save will be lost.','Discard',()=>{EW=null;render()})},
+ 'ew-delete'(){confirmModal('Delete this event?',`“${esc(EW.title)}” and its setlist will be deleted. Songs stay in your library. Messages about it stay in the message center.`,'Delete event',()=>{S.events=S.events.filter(x=>x.id!==EW.id);log('Deleted event '+EW.title);EW=null;save();toast('Event deleted');go('#/events')})},
+ 'ew-compose'(){if(EW.dirty){toast('Save the event first so the message uses your latest changes.',true);return}C=newC(EW.id);go('#/compose')},
+ async 'song-new'(id,el,e){e?.preventDefault();const q=$('#songq')?.value;await songForm(q?{title:q,artist:'',version:'',key:'',tempo:'',tags:[],links:{video:'',lyrics:'',chart:''},rights:'',notes:''}:null);render()},
+ async 'song-edit'(id){await songForm(clone(song(id)));render()},
+ 'song-to-event'(id){pickEvent(id)},
+ 'song-del'(id){const s=song(id);const n=S.events.filter(e=>e.setlist.some(i=>i.songId===id)).length;confirmModal('Delete this song?',`“${esc(s.title)}” will be removed from your library${n?` and from ${n} event setlist${n>1?'s':''}`:''}.`,'Delete song',()=>{S.songs=S.songs.filter(x=>x.id!==id);S.events.forEach(e=>e.setlist=e.setlist.filter(i=>i.songId!==id));if(EW)EW.setlist=EW.setlist.filter(i=>i.songId!==id);log('Deleted song '+s.title);save();toast('Song deleted');go('#/music')})},
+ 'res-go':runResearch,
+ async 'res-save'(i){const x=RES.results[+i];const rec=await songForm({title:x.title,artist:x.artist,version:'',key:'',tempo:'',tags:x.tags.split(' ').slice(0,2),links:{video:'',lyrics:'',chart:''},rights:'',notes:''},true);if(rec)confirmModal('Add it to an event too?',`“${esc(rec.title)}” is in your library.`,'Choose event',()=>pickEvent(rec.id),false)},
+ 'group-new'(){groupForm()},
+ 'group-edit'(id){groupForm(clone(grp(id)))},
+ 'group-del'(id){const g=grp(id);confirmModal('Delete this group?',`“${esc(g.name)}” will be removed from all events. People in it stay in your contacts and other groups.`,'Delete group',()=>{S.groups=S.groups.filter(x=>x.id!==id);S.events.forEach(e=>e.groupIds=e.groupIds.filter(x=>x!==id));log('Deleted group '+g.name);save();toast('Group deleted');go('#/groups')})},
+ 'mem-add'(){memberForm(grp(GID))},
+ 'mem-edit'(id){memberForm(grp(GID),id)},
+ 'mem-rm'(id){const g=grp(GID),c=contact(id);confirmModal('Remove from group?',`${esc(c.name)} will be removed from ${esc(g.name)}. Their contact stays saved.`,'Remove',()=>{g.members=g.members.filter(m=>m.contactId!==id);log('Removed '+c.name+' from '+g.name);save();toast('Member removed');render()})},
+ 'c-event'(id){chooseEvent(C,id);render()},
+ 'c-group'(id,el){const i=C.groupIds.indexOf(id);el.checked?(i<0&&C.groupIds.push(id)):(i>=0&&C.groupIds.splice(i,1));render()},
+ 'c-item'(id,el){const i=C.itemIds.indexOf(id);el.checked?(i<0&&C.itemIds.push(id)):(i>=0&&C.itemIds.splice(i,1));render()},
+ 'c-back'(){C.step=C.step===6&&!C.busy?4:Math.max(1,C.step-1);render()},
+ 'c-next'(){if(C.step===2&&!C.groupIds.length)return;if(C.step===6){saveDrafts();toast('Drafts saved')}C.step++;render()},
+ 'c-generate'(){generate([...C.groupIds])},
+ 'c-regen'(){generate([C.active])},
+ 'c-shorter'(){generate([C.active],'shorter')},
+ 'c-tab'(id,el,e){e.preventDefault();C.active=id;render()},
+ 'c-save'(){saveDrafts();toast('Draft saved to message center');render()},
+ 'c-reviewed'(id,el){C.reviewed=el.checked;render()},
+ async 'c-copy'(gid){const d=C.drafts[gid];const ok=await copyText((C.channel==='email'?'Subject: '+d.subject+'\n\n':'')+d.body);if(!ok){toast('Copy was blocked. Select the text in the preview and copy it manually.',true);return}
+  saveDrafts(null,gid);const m=S.messages.find(x=>x.id===C.msgIds[gid]);if(m.status==='draft'||m.status==='approval')m.status='copied';log('Copied message for '+grp(gid).name);save();toast('Copied. Paste it into your email or messaging app.');render()},
+ 'c-mailto'(gid){const d=C.drafts[gid];const to=recipients(gid).map(r=>r.email).filter(Boolean);const url=`mailto:?bcc=${to.map(encodeURIComponent).join(',')}&subject=${encodeURIComponent(d.subject)}&body=${encodeURIComponent(d.body)}`;
+  confirmModal('Open in your email app?',`A new email to ${to.length} recipient${to.length>1?'s':''} (in BCC) will open in your email app. You still press send there.${url.length>1900?' This message is long, and some email apps cut long messages short. Copy may work better.':''}`,'Open email app',()=>{saveDrafts('handed',gid);log('Handed message for '+grp(gid).name+' to email app');save();window.open(url,'_blank');render()},false)},
+ 'c-approval'(gid){saveDrafts('approval',gid);log('Marked message for '+grp(gid).name+' awaiting approval');save();toast('Marked awaiting approval');render()},
+ 'msg-dup'(id){const m=S.messages.find(x=>x.id===id);const n={...clone(m),id:uid(),status:'draft',subject:'Copy of '+m.subject,created:Date.now(),updated:Date.now()};S.messages.unshift(n);save();toast('Duplicated as a draft');render()},
+ 'msg-del'(id){const m=S.messages.find(x=>x.id===id);confirmModal('Delete this message?',`“${esc(m.subject)}” will be deleted from the message center.`,'Delete',()=>{S.messages=S.messages.filter(x=>x.id!==id);if(C)for(const k in C.msgIds)if(C.msgIds[k]===id)delete C.msgIds[k];save();toast('Message deleted');render()})},
+ 'st-save'(){const ws=$('#st-ws').value.trim();if(!ws){toast('Workspace name can’t be empty.',true);return}S.settings.workspace=ws;S.settings.leader=$('#st-leader').value.trim();S.settings.theme=$('#st-theme').value;save();toast('Settings saved');render()},
+ 'st-reset'(){confirmModal('Reset all data?','Every event, song, group, and message in this browser will be erased and replaced with the demo workspace.','Reset',()=>{S=seed();save();EW=null;C=null;RES={q:'',results:null};toast('Demo data restored');go('#/home')})}
+};
+document.addEventListener('click',e=>{const a=e.target.closest('[data-act]');if(!a||a.disabled)return;const f=A[a.dataset.act];if(!f)return;if(a.tagName==='A'&&a.dataset.act!=='close-modal')e.preventDefault();f(a.dataset.id,a,e)});
+document.addEventListener('input',e=>{const t=e.target;
+ if(t.dataset.ew&&EW){EW[t.dataset.ew]=t.value;markDirty();if(t.tagName==='SELECT')render()}
+ else if(t.dataset.sl&&EW){const [i,f]=t.dataset.sl.split(':');EW.setlist[+i][f]=t.value;markDirty()}
+ else if(t.dataset.c&&C){C[t.dataset.c]=t.value}
+ else if(t.dataset.cd&&C){const d=C.drafts[C.active];d[t.dataset.cd]=t.value;d.edited=true;if(t.dataset.cd==='body')d.warnings=checkLinks(t.value).length?d.warnings:[]}
+ else if(t.id==='songq')renderSongPick();
+ else if(t.id==='libq'||t.id==='libtag'){LIB[t.id==='libq'?'q':'tag']=t.value;$('#liblist').innerHTML=libHTML()}
+ else if(t.id==='evq'||t.id==='evtype'){EVF[t.id==='evq'?'q':'type']=t.value;$('#evlist').innerHTML=evListHTML()}
+ else if(t.id==='memq'){MEMQ=t.value;$('#memlist').innerHTML=memHTML(grp(GID))}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='resq'){e.preventDefault();runResearch()}});
+window.addEventListener('beforeunload',e=>{if(EW&&EW.dirty){e.preventDefault();e.returnValue=''}});
+render();
+</script>
+</body>
