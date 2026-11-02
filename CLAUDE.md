@@ -22,13 +22,17 @@ Core workflow: find music, organize the event, select groups, generate communica
 
 ## Commands
 
-Fill these in as they are created, and keep them accurate:
+Keep these accurate:
 
-- Dev server: `TBD`
-- Tests: `TBD`
-- Lint and type check: `TBD`
-- Database migrate: `TBD`
-- Seed demo data: `TBD`
+- Dev server: `npm run dev` (http://localhost:3000)
+- Lint: `npm run lint`
+- Type check: `npm run typecheck`
+- Production build: `npm run build`
+- Local database: first time `npx prisma dev --name cuesync --detach`, then `npm run db:start` / `npm run db:stop`
+- Database migrate: `npm run db:migrate -- --name <change>`
+- Seed demo data: `npm run db:seed` (safe to re-run)
+- Inspect demo data: `npm run db:inspect` (read-only; Prisma Studio currently fails to introspect the local db)
+- Tests: `TBD` (Vitest and Playwright not installed yet)
 
 ## Non-negotiable rules
 

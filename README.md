@@ -6,7 +6,7 @@ Music leaders spend hours every week repeating the same work: finding the right 
 
 **Core workflow:** Find music → Organize the event → Select groups → Generate communications → Review → Send.
 
-> **Status:** Active development. The data model and project foundation are in place; the read-only app is being built now. See the [roadmap](#roadmap) and [session log](docs/session-log.md).
+> **Status:** Active development. The data model, demo data, and read-only app (dashboard, events, library, groups) work locally. Sign-in is next. See the [roadmap](#roadmap) and [session log](docs/session-log.md).
 
 ---
 
@@ -15,9 +15,9 @@ Music leaders spend hours every week repeating the same work: finding the right 
 | Area | What it does | Status |
 |---|---|---|
 | Data model | Workspaces, groups, contacts, songs, events, setlists, messages, audit log | Done |
-| Events & setlists | Create events, add songs in order with per-event key, tempo, and notes | In progress |
-| Music library | Saved songs with links to recordings, charts, and authorized lyrics sources | In progress |
-| Groups | Musicians in many groups (Worship Team, Choir, Live Band) without duplicate contacts | In progress |
+| Events & setlists | View events and ordered setlists (done); create and edit (next) | Read-only done |
+| Music library | Saved songs with links to recordings, charts, and authorized lyrics sources | Read-only done |
+| Groups | Musicians in many groups (Worship Team, Choir, Live Band) without duplicate contacts | Read-only done |
 | Sign-in & roles | Owner, leader, and musician roles per workspace | Planned |
 | AI message composer | Drafts a tailored message per group; the leader reviews and approves before anything sends | Planned |
 | Music research | Search for songs and recordings with source attribution | Planned |
@@ -70,12 +70,13 @@ npm run dev                   # open http://localhost:3000
 | `npm run db:start` / `db:stop` | Start or stop the local database |
 | `npm run db:migrate` | Apply database migrations |
 | `npm run db:seed` | Load demo data |
+| `npm run db:inspect` | Print a read-only summary of the demo data |
 | `npm run db:studio` | Browse the database in Prisma Studio |
 
 ## Roadmap
 
-1. **Foundation:** data model, demo data, read-only pages *(current)*
-2. **Sign-in and authorization:** roles, workspace isolation tests
+1. **Foundation:** data model, demo data, read-only pages *(done)*
+2. **Sign-in and authorization:** roles, workspace isolation tests *(next)*
 3. **Create and edit:** events, setlists, groups, library
 4. **AI message composer:** drafts, review, approval
 5. **Music research:** search with source attribution

@@ -128,3 +128,64 @@
     @apply font-sans;
   }
 }
+/* ---------- CueSync design tokens ----------
+   Taken from docs/prototype/cuesync.html. These override the shadcn defaults
+   above, so every shadcn component picks up the CueSync palette. */
+@theme inline {
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+}
+
+:root {
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --background: #f4f5f8;
+  --foreground: #14213d;
+  --card: #ffffff;
+  --card-foreground: #14213d;
+  --popover: #ffffff;
+  --popover-foreground: #14213d;
+  --primary: #4f46e5;
+  --primary-foreground: #ffffff;
+  --secondary: #eef0f4;
+  --secondary-foreground: #14213d;
+  --muted: #eef0f4;
+  --muted-foreground: #596378;
+  --accent: #ececfe;
+  --accent-foreground: #4f46e5;
+  --destructive: #b91c1c;
+  --border: #dfe3ea;
+  --input: #dfe3ea;
+  --ring: #4f46e5;
+  --ok: #15803d;
+  --ok-soft: #e6f4ea;
+  --warn: #a45309;
+  --warn-soft: #fcf1e2;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0e1322;
+    --foreground: #e8ebf3;
+    --card: #161c2f;
+    --card-foreground: #e8ebf3;
+    --popover: #161c2f;
+    --popover-foreground: #e8ebf3;
+    --primary: #8f8dfb;
+    --primary-foreground: #0e1322;
+    --secondary: #111627;
+    --secondary-foreground: #e8ebf3;
+    --muted: #111627;
+    --muted-foreground: #9aa3b6;
+    --accent: #232750;
+    --accent-foreground: #b9b8fd;
+    --border: #273049;
+    --input: #273049;
+    --ring: #8f8dfb;
+    --ok: #5cc98a;
+    --ok-soft: #173326;
+    --warn: #f0b062;
+    --warn-soft: #3a2a14;
+  }
+}
