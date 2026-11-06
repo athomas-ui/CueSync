@@ -33,6 +33,8 @@ Keep these accurate:
 - Seed demo data: `npm run db:seed` (safe to re-run)
 - Inspect demo data: `npm run db:inspect` (read-only; Prisma Studio currently fails to introspect the local db)
 - Tests: `TBD` (Vitest and Playwright not installed yet)
+- Deploy: push to `main` (Vercel auto-deploys). Production migrations are manual: see `docs/deployment.md`.
+- Live site: https://cue-sync.vercel.app
 
 ## Non-negotiable rules
 

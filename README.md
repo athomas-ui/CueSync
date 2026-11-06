@@ -4,9 +4,13 @@
 
 Music leaders spend hours every week repeating the same work: finding the right version of a song, building the setlist, figuring out who needs which recording, and retyping the same details into texts and emails for each group. CueSync lets a leader enter that information once and reuse it everywhere.
 
-**Core workflow:** Find music → Organize the event → Select groups → Generate communications → Review → Send.
+**Core workflow:** Organize the event → Assemble the band → Build the setlist → Draft each group's message → Send it on the platform your band already uses.
 
-> **Status:** Active development. The data model, demo data, and read-only app (dashboard, events, library, groups) work locally. Sign-in is next. See the [roadmap](#roadmap) and [session log](docs/session-log.md).
+### [▶ Try it live: cue-sync.vercel.app](https://cue-sync.vercel.app)
+
+> **Status:** Active development. The live site is a read-only demo with clearly labeled sample data. Sign-in and editing are next. See the [roadmap](#roadmap) and [session log](docs/session-log.md).
+
+![CueSync dashboard showing upcoming events, groups, and workspace stats](docs/screenshots/dashboard.png)
 
 ---
 
@@ -18,10 +22,11 @@ Music leaders spend hours every week repeating the same work: finding the right 
 | Events & setlists | View events and ordered setlists (done); create and edit (next) | Read-only done |
 | Music library | Saved songs with links to recordings, charts, and authorized lyrics sources | Read-only done |
 | Groups | Musicians in many groups (Worship Team, Choir, Live Band) without duplicate contacts | Read-only done |
-| Sign-in & roles | Owner, leader, and musician roles per workspace | Planned |
-| AI message composer | Drafts a tailored message per group; the leader reviews and approves before anything sends | Planned |
+| Sign-in & roles | Owner, leader, and musician roles per workspace | Next |
+| Show checklist | A to-do list for every event, from assembling the band to the show, with due dates planned backward from show day | Planned |
+| Message builder | Drafts a tailored message per group, formatted for the platform the leader picks (email, text, WhatsApp, GroupMe, Slack). The leader copies it and sends it from their own app. | Planned |
 | Music research | Search for songs and recordings with source attribution | Planned |
-| Sending | One real email integration with honest delivery status | Planned |
+| Deployment | Live on Vercel with a hosted Prisma Postgres database | Done |
 
 A clickable UI prototype lives in [`docs/prototype/cuesync.html`](docs/prototype/cuesync.html). Download it and open it in a browser to see the full intended workflow.
 
@@ -52,8 +57,8 @@ The full rule set that guides development is in [`CLAUDE.md`](CLAUDE.md).
 **Prerequisites:** Node.js 20+ and Git. No Docker needed; Prisma runs a local Postgres for development.
 
 ```bash
-git clone https://github.com/<your-username>/cuesync.git
-cd cuesync
+git clone https://github.com/athomas-ui/CueSync.git
+cd CueSync
 npm install
 cp .env.example .env          # then fill in the values from `npx prisma dev ls`
 npx prisma dev --name cuesync --detach   # first time only: creates the local database
@@ -73,15 +78,19 @@ npm run dev                   # open http://localhost:3000
 | `npm run db:inspect` | Print a read-only summary of the demo data |
 | `npm run db:studio` | Browse the database in Prisma Studio |
 
+## Deployment
+
+Hosted on **Vercel** with **Prisma Postgres**. Every push to `main` deploys automatically. Database migrations are applied by hand with `prisma migrate deploy`, never during the build. See the [deployment runbook](docs/deployment.md).
+
 ## Roadmap
 
 1. **Foundation:** data model, demo data, read-only pages *(done)*
-2. **Sign-in and authorization:** roles, workspace isolation tests *(next)*
-3. **Create and edit:** events, setlists, groups, library
-4. **AI message composer:** drafts, review, approval
-5. **Music research:** search with source attribution
-6. **Sending:** one real email provider with delivery status
-7. **Testing, accessibility, and deployment**
+2. **Deployment:** live on Vercel with hosted Postgres, zero npm audit findings *(done)*
+3. **Sign-in and authorization:** accounts, a private workspace per user, workspace isolation tests *(next)*
+4. **Create and edit:** events, setlists, groups, members, library
+5. **Show checklist:** phase templates per event type, due dates planned backward from show day
+6. **Message builder:** platform-aware drafts, edit, copy or open in app, mark as sent
+7. **Music research and AI drafts:** search with source attribution, optional AI writing
 
 ## About
 
