@@ -9,6 +9,9 @@ export default defineConfig({
   },
   datasource: {
     url: env("DATABASE_URL"),
-    shadowDatabaseUrl: env("SHADOW_DATABASE_URL"),
+    // Optional: only `migrate dev` on your machine needs a shadow database.
+    // env() throws when a variable is missing, so production (Vercel), which
+    // has no shadow database, would fail. process.env returns undefined instead.
+    shadowDatabaseUrl: process.env.SHADOW_DATABASE_URL,
   },
 });
